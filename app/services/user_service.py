@@ -27,6 +27,10 @@ class UserService:
             "user_id": new_user.id
         }
     
+    async def get_all_users(self, skip: int = 0, limit: int = 100):
+        return await self.user_repo.get_all_user(skip, limit)
+
+
     async def login(self, login_data: UserLogin) -> Token:
         user = await self.user_repo.get_by_email(login_data.email)
         if not user:

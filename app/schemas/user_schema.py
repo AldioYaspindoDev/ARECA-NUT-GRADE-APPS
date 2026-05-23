@@ -16,8 +16,12 @@ class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
+class GetAllUser(BaseModel):
+    username: str
+    email: EmailStr
+
 class UserResponse(BaseModel):
-    id: int
+    id: str
     email: str
     username: str
     password: str

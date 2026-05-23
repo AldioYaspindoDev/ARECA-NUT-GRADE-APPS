@@ -6,6 +6,10 @@ from app.schemas.user_schema import UserCreate
 class UserRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
+
+    async def get_all_user(self, skip: int = 0, limit: int = 100) -> list[UserModels]:
+        result = await self.db.execute(select(UserModels).offset(skip).limit(limit))
+        return result.scalars().all()
     
     async def get_by_email(self, email: str) -> UserModels | None:
         result = await self.db.execute(select(UserModels).where(UserModels.email == email))
@@ -20,7 +24,7 @@ class UserRepository:
 
             username = user_data.username,
             email = user_data.email,
-            password = user_data.password,
+            password = password,
             role = user_data.role.value
         )
         self.db.add(new_user)
