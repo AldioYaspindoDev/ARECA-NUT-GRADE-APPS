@@ -2,7 +2,8 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from app.db.database import engine, Base
-from app.api.V1.endpoints.user_route import router as user_router
+from app.api.V1.endpoints import admin_route 
+from app.api.V1.endpoints import user_route
 from app.core.config import settings
 
 # fungsi untuk mencoba koneksi database
@@ -18,7 +19,8 @@ async def lifespan(app: FastAPI):
 # inisialisasi FastAPI
 app = FastAPI(lifespan=lifespan)
 
-app.include_router(user_router, prefix="/api")
+app.include_router(user_route.router, prefix="/api")
+app.include_router(admin_route.router, prefix="/api")
 
 @app.get("/")
 async def read_root():
