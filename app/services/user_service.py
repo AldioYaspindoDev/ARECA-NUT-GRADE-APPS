@@ -11,6 +11,7 @@ class UserService:
     def __init__(self, db: AsyncSession):
         self.user_repo = UserRepository(db)
     
+    # fungsi untuk logic registrasi user
     async def register(self, user_data: UserCreate) -> dict:
         existing_email = await self.user_repo.get_by_email(user_data.email)
         if existing_email:
@@ -27,10 +28,11 @@ class UserService:
             "user_id": new_user.id
         }
     
+    # logic untuk mengambil semua data user
     async def get_all_users(self, skip: int = 0, limit: int = 100):
         return await self.user_repo.get_all_user(skip, limit)
 
-
+    # logic untuk user login
     async def login(self, login_data: UserLogin) -> Token:
         user = await self.user_repo.get_by_email(login_data.email)
         if not user:
@@ -43,5 +45,17 @@ class UserService:
             },
             expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         )
-
         return Token(access_token=access_token)
+    
+    async def user_to_admin(self, id: str, current_admin_id: str) -> dict:
+        user = await self.user_repo.get_by_id(id)
+        if not user:
+            raise HTTPException(status_code=404, detail="user not found")
+        
+        if user.role == "admin":
+            raise HTTPException(status_code=400, detail="user role already admin")
+        
+        udpdate_role = await self.user_repo.update_role(id, "admin")
+        return{
+            "message" : f"User {udpdate_role.username} has been update to admin"
+        }

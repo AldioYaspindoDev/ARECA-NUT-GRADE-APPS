@@ -18,3 +18,13 @@ async def get_all_user(
     user_service = UserService(db)
     users = await user_service.get_all_users(skip, limit)
     return users
+
+@router.patch("/promote/{user_id}", response_model=dict)
+async def promote_user_to_admin(
+    user_id: str,
+    current_admin = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    user_service = UserService(db)
+    result = await user_service.user_to_admin(user_id, current_admin.id)
+    return result
