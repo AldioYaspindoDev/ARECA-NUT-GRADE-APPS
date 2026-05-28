@@ -5,6 +5,8 @@ from app.db.database import engine, Base
 from app.api.V1.endpoints import admin_route 
 from app.api.V1.endpoints import user_route
 from app.core.config import settings
+import models.ArticleModels
+import models.UserModels
 
 # fungsi untuk mencoba koneksi database
 @asynccontextmanager

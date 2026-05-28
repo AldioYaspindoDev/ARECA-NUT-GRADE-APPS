@@ -2,6 +2,7 @@ from sqlalchemy import Column, String, func, DateTime
 from sqlalchemy.orm import Mapped, mapped_column
 from app.db.database import Base
 from enum import Enum as PyEnum 
+from typing import List
 import uuid
 
 class UserRole(str, PyEnum):
@@ -24,3 +25,7 @@ class UserModels(Base):
     role: Mapped[str] = mapped_column(String(20), default=UserRole.USER.value)
     created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    # section relasi ke articles
+    article: Mapped[List["ArticleModels"]] = relationship("ArticleModels", back_populates="author", lazy="selectin"
+    )
