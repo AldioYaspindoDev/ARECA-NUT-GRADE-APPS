@@ -4,4 +4,6 @@ dotenv
 pydantic-settings
 sqlalchemy
 aiomysql
-python-multipart Pillow
+python-multipart
+Pillow
+aiofiles
