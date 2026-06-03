@@ -7,6 +7,7 @@ from app.db.database import engine, Base
 from app.api.V1.endpoints import admin_route 
 from app.api.V1.endpoints import user_route
 from app.api.V1.endpoints import article_route
+from app.api.V1.endpoints import pinang_route
 from app.core.config import settings
 # import app.models.ArticleModels
 # import app.models.UserModels
@@ -30,6 +31,7 @@ app = FastAPI(lifespan=lifespan)
 app.include_router(user_route.router, prefix="/api")
 app.include_router(admin_route.router, prefix="/api")
 app.include_router(article_route.router, prefix="/api")
+app.include_router(pinang_route.router, prefix="/api")
 
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 

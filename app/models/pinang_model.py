@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, func, DateTime
+from sqlalchemy import Column, String, func, DateTime, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.database import Base
 from typing import Optional
@@ -20,8 +20,9 @@ class PinangModels(Base):
     tingkat_kekeringan: Mapped[str] = mapped_column(String(20), nullable=True)
     deskripsi: Mapped[str] = mapped_column(String(200), nullable=True)
     persentase: Mapped[str] = mapped_column(String(10), nullable=True)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("user.id", ondelete="CASCADE"), nullable=False)
     created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now)
 
     # relasi ke user
-    user: Mapped[List["UserModels"]] = relationship("UserModels", back_populates="author", lazy="selectin")
+    author: Mapped["UserModels"] = relationship("UserModels", back_populates="pinang", lazy="selectin")

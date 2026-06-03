@@ -3,7 +3,7 @@ from typing import Optional
 from datetime import datetime
 
 class PinangBase(BaseModel):
-    gambar: str
+    gambar: Optional[str] = None
     jenis_pinang: str
     kualitas_pinang: str
     tingkat_kekeringan: str
@@ -16,7 +16,7 @@ class PinangCreate(PinangBase):
 class PinangResponse(BaseModel):
     id: str
     user_id: str
-    gambar: str
+    gambar: Optional[str] = None
     jenis_pinang: str
     kualitas_pinang: str
     tingkat_kekeringan: str
