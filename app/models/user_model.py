@@ -32,3 +32,6 @@ class UserModels(Base):
 
     # section relasi ke pinang
     pinang: Mapped[List["PinangModels"]] = relationship("PinangModels", back_populates="author", lazy="selectin")
+
+    # section relasi ke history
+    history: Mapped[List["HistoryModels"]] = relationship("HistoryModels", back_populates="user", lazy="selectin")
