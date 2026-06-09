@@ -1,5 +1,3 @@
-@AGENTS.md
-
 Berikut adalah file **`setup-react-native.md`** yang berisi panduan lengkap setup proyek React Native dengan best practices untuk pemula. Anda bisa langsung menyimpannya dan menggunakannya sebagai referensi.
 
 ```markdown
