@@ -25,11 +25,13 @@ from app.models.history_model import HistoryModels
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    print("✅ Database Connected — semua tabel siap")
+    print("🟢 Database Connected — semua tabel siap")
     yield
     await engine.dispose()
     print("🔴 Database Connection Closed")
 
+
+from fastapi.middleware.cors import CORSMiddleware
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -39,6 +41,21 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+
+# Konfigurasi CORS agar Vite (frontend) bisa memanggil API
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 app.include_router(user_route.router, prefix="/api")
 app.include_router(admin_route.router, prefix="/api")
