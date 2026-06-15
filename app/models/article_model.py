@@ -24,4 +24,8 @@ class ArticleModels(Base):
     updated_at: Mapped[Optional[DateTime]] = mapped_column(DateTime, onupdate=func.now()) 
 
     # section relasi
-    author: Mapped["UserModels"] = relationship("UserModels", back_populates="article")
+    author: Mapped["UserModels"] = relationship("UserModels", back_populates="article", lazy="selectin")
+
+    @property
+    def username(self) -> Optional[str]:
+        return self.author.username if self.author else None

@@ -17,6 +17,7 @@ class ArticleUpdate(BaseModel):
 class ArticleResponse(BaseModel):
     id: str
     user_id: str
+    username: Optional[str] = None
     judul: str
     isi: str
     gambar: Optional[str] = None
