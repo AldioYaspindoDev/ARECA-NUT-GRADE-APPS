@@ -1,11 +1,51 @@
-import React from "react";
-import { View, ScrollView, Image, Text, TouchableOpacity, StyleSheet } from "react-native";
+import React, { useEffect } from "react";
+import { View, ScrollView, Image, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import BottomNavigationBar from "../../components/BottomNavigationBar";
+import { useAuthStore } from "@/stores/useAuthStore";
+import Login from "../Login";
 
 export default function Profile({ navigation }: any) {
+  const logout = useAuthStore((state) => state.logout);
+  const token = useAuthStore((state) => state.token);
+  const user = useAuthStore((state) => state.user);
+  const fetchProfile = useAuthStore((state) => state.fetchProfile);
+  
+  useEffect(() => {
+    if (token) {
+      fetchProfile().catch((err) => {
+        console.error("Gagal memuat profil:", err);
+      });
+    }
+  }, [token]);
+
+  if (token === null) {
+    return <Login navigation={navigation} />;
+  }
+  
   const handlePress = () => {
     alert("Pressed!");
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      "Konfirmasi Logout",
+      "Apakah Anda yakin ingin keluar?",
+      [
+        { text: "Batal", style: "cancel" },
+        { 
+          text: "Logout", 
+          style: "destructive", 
+          onPress: async () => {
+            try {
+              await logout();
+            } catch (error) {
+              Alert.alert("Error", "Gagal melakukan logout");
+            }
+          } 
+        }
+      ]
+    );
   };
 
   return (
@@ -27,8 +67,8 @@ export default function Profile({ navigation }: any) {
                   style={styles.cameraOverlayIcon}
                 />
               </View>
-              <Text style={styles.usernameText}>Akun Saya</Text>
-              <Text style={styles.updateProfileLink}>Update Profil</Text>
+              <Text style={styles.usernameText}>{user?.username || "Memuat..."}</Text>
+              <Text style={styles.updateProfileLink}>{user?.email || "memuat..."} ({user?.role})</Text>
             </View>
           </View>
 
@@ -104,7 +144,7 @@ export default function Profile({ navigation }: any) {
           </View>
 
           {/* Logout Button */}
-          <TouchableOpacity style={styles.logoutButton} onPress={handlePress}>
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
             <Image
               source={{ uri: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/VPTfRFh18j/z528xtwt_expires_30_days.png" }}
               resizeMode="stretch"
@@ -118,7 +158,7 @@ export default function Profile({ navigation }: any) {
       <BottomNavigationBar
         activeTab="profile"
         onPressHome={() => navigation.navigate("HomeArecaNut")}
-        onPressProfile={() => navigation.navigate("Register")}
+        onPressProfile={() => navigation.navigate("Profile")}
         onPressDetection={() => navigation.navigate("OutputResultScan")}
       />
     </SafeAreaView>

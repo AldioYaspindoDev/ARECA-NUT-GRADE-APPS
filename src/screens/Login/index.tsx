@@ -1,14 +1,31 @@
+import { useAuthStore } from "@/stores/useAuthStore";
 import React, { useState } from "react";
-import { View, ScrollView, Image, Text, TextInput, TouchableOpacity, StyleSheet } from "react-native";
+import { View, ScrollView, Image, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function Login({ navigation }: any) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const login = useAuthStore((state) => state.login);
+  const isLoading = useAuthStore((state) => state.isLoginLoading);
 
-  const handleLogin = () => {
-    alert(`Logging in with:\nEmail: ${email}`);
-  };
+  const handleLogin = async () => {
+      if(!email.trim() || !password.trim()) {
+        Alert.alert('Perhatian', 'Email dan Password Harus Diisi');
+        return;
+      }
+      
+      try {
+        await login({
+          email,
+          password
+        });
+        navigation.navigate("Profile");
+      } catch (error: any) {
+        const message = error.response?.data?.message || "Email atau password salah, atau terjadi kesalahan jaringan";
+        Alert.alert('Gagal Login', message);
+      }
+  };  
 
   return (
     <SafeAreaView style={styles.container}>
@@ -46,10 +63,12 @@ export default function Login({ navigation }: any) {
               autoCapitalize="none"
             />
 
-            <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-              <Text style={styles.loginButtonText}>
-                {"Login"}
-              </Text>
+            <TouchableOpacity style={styles.loginButton} onPress={handleLogin} disabled={isLoading}>
+                {isLoading ? (
+                  <ActivityIndicator />
+                ) : (
+                  <Text style={styles.loginButtonText}> {"Login"} </Text>
+                )}
             </TouchableOpacity>
           </View>
 

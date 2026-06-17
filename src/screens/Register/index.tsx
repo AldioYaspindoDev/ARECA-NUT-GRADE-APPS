@@ -1,14 +1,34 @@
+import { useAuthStore } from "@/stores/useAuthStore";
 import React, { useState } from "react";
-import { View, ScrollView, Image, Text, TextInput, TouchableOpacity, StyleSheet } from "react-native";
+import { View, ScrollView, Image, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function Register({ navigation }: any) {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const register = useAuthStore((state) => state.register);
+  const isLoading = useAuthStore((state) => state.isLoginLoading);
 
-  const handleRegister = () => {
-    alert(`Registering with:\nUsername: ${username}\nEmail: ${email}`);
+  const handleRegister = async () => {
+    if(!username.trim() || !email.trim() || !password.trim()) {
+      Alert.alert('Perhatian', 'Username, Email dan Password Harus Diisi');
+      return;
+    }
+    
+    try {
+      await register({
+        username,
+        email,
+        password
+      });
+      Alert.alert('Sukses', 'Registrasi berhasil! Silakan login.', [
+        { text: 'OK', onPress: () => navigation.navigate("Login") }
+      ]);
+    } catch (error: any) {
+      const message = error.response?.data?.detail || error.response?.data?.message || "Terjadi kesalahan saat melakukan registrasi";
+      Alert.alert('Gagal Daftar', message);
+    }
   };
 
   return (
@@ -56,10 +76,14 @@ export default function Register({ navigation }: any) {
               autoCapitalize="none"
             />
 
-            <TouchableOpacity style={styles.registerButton} onPress={handleRegister}>
-              <Text style={styles.registerButtonText}>
-                {"Register"}
-              </Text>
+            <TouchableOpacity style={styles.registerButton} onPress={handleRegister} disabled={isLoading}>
+              {isLoading ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.registerButtonText}>
+                  {"Register"}
+                </Text>
+              )}
             </TouchableOpacity>
           </View>
 

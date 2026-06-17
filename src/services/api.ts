@@ -1,27 +1,43 @@
-import axios from 'axios';
-import { API_URL } from '@env';
+import axios from "axios";
+import { API_URL } from "@env";
+import { getToken } from "./storage";
 
-export const api = axios.create({
+const api = axios.create({
   baseURL: API_URL,
   timeout: 10000,
-  headers: { 'Content-Type': 'application/json' },
+  headers: {
+    'Content-Type': 'application/json',
+  }
 });
 
-// Interceptor request (tambahkan token jika ada)
+// MENAMBAHKAN TOKEN OTOMATIS
 api.interceptors.request.use(
   async (config) => {
-    // const token = await getTokenFromStorage();
-    // if (token) config.headers.Authorization = `Bearer ${token}`;
+    const token = await getToken();
+    if(token && config.headers){
+      config.headers.Authorization =`Bearer ${token}`;
+    }
     return config;
-  },
-  (error) => Promise.reject(error)
+  }, (error) => Promise.reject(error)
 );
 
-// Interceptor response (handle error global)
+let onUnauthorizedCallback: (() => void) | null = null;
+
+export const setOnUnauthorized = (callback: () => void) => {
+  onUnauthorizedCallback = callback;
+};
+
+// OLAH ERROR GLOBAL
 api.interceptors.response.use(
   (response) => response.data,
-  (error) => {
-    console.error('API Error:', error.response?.data || error.message);
+  async (error) => {
+    if (error.response?.status === 401) {
+      if (onUnauthorizedCallback) {
+        onUnauthorizedCallback();
+      }
+    }
     return Promise.reject(error);
   }
 );
+
+export { api };

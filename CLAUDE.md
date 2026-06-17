@@ -1,427 +1,287 @@
-@AGENTS.md
+Ringkasan Routing API
+Semua routing utama di bawah ini di-prefix oleh /api di file 
 
-Berikut adalah file **`setup-react-native.md`** yang berisi panduan lengkap setup proyek React Native dengan best practices untuk pemula. Anda bisa langsung menyimpannya dan menggunakannya sebagai referensi.
+main.py
+. Ada juga route static file /static untuk menampilkan gambar/aset yang diupload.
 
-```markdown
-# Panduan Setup Proyek React Native (Best Practices untuk Pemula)
+1. User & Authentication Route (/api/user)
+Mengatur registrasi, login, dan profil pengguna.
 
-Panduan ini menggunakan **Expo** (dengan TypeScript) untuk memudahkan pengembangan tanpa kehilangan fleksibilitas. Cocok untuk pemula yang ingin membangun aplikasi dengan struktur kode yang rapi, scalable, dan mudah dikelola.
-
----
-
-## Prasyarat
-
-- **Node.js** (versi LTS, minimal 18) - [Download](https://nodejs.org/)
-- **Git** (opsional, namun disarankan)
-- **Android Studio** (untuk emulator Android) atau **Xcode** (khusus Mac untuk iOS)
-- **Expo Go** (aplikasi di HP Android/iOS) untuk testing cepat
-
----
-
-## 1. Membuat Proyek Baru
-
-```bash
-npx create-expo-app MyBestProject --template
-# Pilih template "Blank (TypeScript)"
-cd MyBestProject
-```
-
----
-
-## 2. Install Alat Bantu (ESLint + Prettier)
-
-```bash
-npm install --save-dev eslint prettier eslint-config-expo eslint-plugin-prettier
-npm init @eslint/config@latest
-```
-
-Pilih opsi:
-- `To check syntax and find problems`
-- `JavaScript modules`
-- `None of these`
-- `Yes` untuk TypeScript
-- `Browser/Node`
-- `Use popular style guide?` → **Tidak**
-- Format file → `JSON`
-
-Setelah itu, hapus file `.eslintrc` yang dihasilkan, lalu buat file **`.eslintrc.json`**:
-
-```json
+POST /api/user/register
+Deskripsi: Registrasi pengguna baru.
+Content-Type: application/json
+Request Body:
+json
 {
-  "extends": ["expo", "prettier"],
-  "plugins": ["prettier"],
-  "rules": {
-    "prettier/prettier": "error"
-  }
+  "username": "petani_hebat",    // string (min: 3, max: 50, Required)
+  "email": "petani@gmail.com",   // string (Format email, Required)
+  "password": "password123",     // string (min: 6, Required)
+  "role": "petani"               // string/enum: "petani" atau "admin" (Optional, default: "petani")
 }
-```
-
-Buat file **`.prettierrc`**:
-
-```json
+Response: Data user terdaftar.
+POST /api/user/login
+Deskripsi: Login untuk mendapatkan JWT token.
+Content-Type: application/json
+Request Body:
+json
 {
-  "semi": true,
-  "singleQuote": true,
-  "tabWidth": 2,
-  "trailingComma": "es5"
+  "email": "petani@gmail.com",   // string (Required)
+  "password": "password123"      // string (Required)
 }
-```
-
----
-
-## 3. Struktur Folder (Rekomendasi)
-
-```
-my-app/
-├── src/
-│   ├── assets/          # gambar, font, ikon lokal
-│   ├── components/      # komponen reusable (Button, Card, ...)
-│   ├── constants/       # warna, ukuran, key storage
-│   ├── hooks/           # custom hooks
-│   ├── navigation/      # stack, tab, drawer navigator
-│   ├── screens/         # halaman-halaman aplikasi
-│   ├── services/        # API calls, AsyncStorage, notifikasi
-│   ├── stores/          # state management (Zustand)
-│   ├── types/           # TypeScript tipe/interface global
-│   ├── utils/           # helper functions, format, validasi
-│   └── App.tsx          # entry point sebenarnya
-├── App.tsx              # hanya memanggil src/App
-├── .env                 # environment variables (jangan commit!)
-├── .gitignore           # pastikan .env masuk
-├── app.json             # konfigurasi Expo
-└── package.json
-```
-
-Buat file `src/App.tsx` sederhana:
-
-```tsx
-import { Text, View } from 'react-native';
-
-export default function App() {
-  return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text>Hello React Native!</Text>
-    </View>
-  );
+Response (200 OK):
+json
+{
+  "access_token": "eyJhbGciOi...", 
+  "token_type": "bearer"
 }
-```
-
-Ubah `App.tsx` di root menjadi:
-
-```tsx
-import App from './src/App';
-export default App;
-```
-
----
-
-## 4. Environment Variables (Menyimpan Rahasia)
-
-```bash
-npm install react-native-dotenv
-```
-
-Buat file **`.env`** di root proyek:
-
-```
-API_URL=https://jsonplaceholder.typicode.com
-```
-
-Ubah **`babel.config.js`**:
-
-```javascript
-module.exports = function(api) {
-  api.cache(true);
-  return {
-    presets: ['babel-preset-expo'],
-    plugins: [
-      ['module:react-native-dotenv', {
-        moduleName: '@env',
-        path: '.env',
-      }]
-    ]
-  };
-};
-```
-
-Contoh penggunaan di komponen:
-
-```tsx
-import { API_URL } from '@env';
-console.log(API_URL);
-```
-
----
-
-## 5. Navigasi (React Navigation)
-
-```bash
-npm install @react-navigation/native @react-navigation/stack @react-navigation/bottom-tabs
-npm install react-native-screens react-native-safe-area-context
-npm install @react-navigation/native-stack
-```
-
-Buat **`src/navigation/index.tsx`**:
-
-```tsx
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-
-export type RootStackParamList = {
-  Home: undefined;
-  Details: { id: number };
-};
-
-const Stack = createNativeStackNavigator<RootStackParamList>();
-
-export default function AppNavigator() {
-  return (
-    <NavigationContainer>
-      <Stack.Navigator>
-        <Stack.Screen name="Home" component={HomeScreen} />
-        <Stack.Screen name="Details" component={DetailsScreen} />
-      </Stack.Navigator>
-    </NavigationContainer>
-  );
+GET /api/user/me
+Deskripsi: Mendapatkan profil user yang sedang login.
+Headers: Authorization: Bearer <access_token>
+Response (200 OK):
+json
+{
+  "id": "uuid-string-user-id",
+  "email": "petani@gmail.com",
+  "username": "petani_hebat",
+  "password": "hashed_password",
+  "role": "petani",
+  "created_at": "2026-06-17T03:40:27Z"
 }
-```
+GET /api/user/all
+Deskripsi: Mengambil daftar semua user (Tanpa proteksi admin di level route, namun memanggil UserService).
+Query Parameters:
+skip (number, default: 0)
+limit (number, default: 100)
+Response (200 OK): Array of UserResponse.
+2. Admin Route (/api/admin)
+Hanya dapat diakses oleh user dengan role "admin".
 
-Jangan lupa buat file `screens/HomeScreen.tsx` dan `screens/DetailsScreen.tsx` sementara.
-
----
-
-## 6. State Management (Zustand - Simple & Ringan)
-
-```bash
-npm install zustand
-```
-
-Buat **`src/stores/useCounterStore.ts`**:
-
-```ts
-import { create } from 'zustand';
-
-interface CounterState {
-  count: number;
-  increment: () => void;
-  decrement: () => void;
+GET /api/admin/getuser
+Deskripsi: Mengambil semua user (khusus Admin).
+Headers: Authorization: Bearer <access_token>
+Query Parameters:
+skip (number, default: 0, minimum: 0)
+limit (number, default: 100, minimum: 1)
+Response (200 OK): Array of UserResponse (seperti struktur di /api/user/me).
+PATCH /api/admin/promote/{user_id}
+Deskripsi: Mengubah role user lain menjadi admin.
+Headers: Authorization: Bearer <access_token>
+Path Parameters:
+user_id (string, Required)
+Response (200 OK):
+json
+{
+  "status": "success",
+  "message": "User role updated to admin"
 }
+3. Article Route (/api/article)
+Mengelola artikel/berita edukasi seputar pinang.
 
-export const useCounterStore = create<CounterState>((set) => ({
-  count: 0,
-  increment: () => set((state) => ({ count: state.count + 1 })),
-  decrement: () => set((state) => ({ count: state.count - 1 })),
-}));
-```
-
-Gunakan di komponen:
-
-```tsx
-import { useCounterStore } from '../stores/useCounterStore';
-import { Button, Text, View } from 'react-native';
-
-export default function Counter() {
-  const { count, increment, decrement } = useCounterStore();
-  return (
-    <View>
-      <Text>{count}</Text>
-      <Button title="Tambah" onPress={increment} />
-      <Button title="Kurang" onPress={decrement} />
-    </View>
-  );
+POST /api/article/
+Deskripsi: Membuat artikel baru (Bisa disertai upload gambar).
+Headers: Authorization: Bearer <access_token>
+Content-Type: multipart/form-data
+Request Body (Form Data):
+judul (string, min: 5, max: 100, Required)
+isi (string, min: 20, Required)
+file (File/Binary, Gambar artikel, Optional)
+Response (201 Created):
+json
+{
+  "id": "uuid-article",
+  "user_id": "uuid-creator",
+  "username": "admin_hebat",
+  "judul": "Cara Budidaya Pinang Unggul",
+  "isi": "Isi lengkap artikel minimal 20 karakter...",
+  "gambar": "uploads/articles/nama_gambar.jpg", // path gambar
+  "tanggal": "2026-06-17T03:40:27Z",
+  "updated_at": "2026-06-17T03:40:27Z"
 }
-```
-
----
-
-## 7. HTTP Client dengan Axios + Interceptor
-
-```bash
-npm install axios
-```
-
-Buat **`src/services/api.ts`**:
-
-```ts
-import axios from 'axios';
-import { API_URL } from '@env';
-
-export const api = axios.create({
-  baseURL: API_URL,
-  timeout: 10000,
-  headers: { 'Content-Type': 'application/json' },
-});
-
-// Interceptor request (tambahkan token jika ada)
-api.interceptors.request.use(
-  async (config) => {
-    // const token = await getTokenFromStorage();
-    // if (token) config.headers.Authorization = `Bearer ${token}`;
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
-
-// Interceptor response (handle error global)
-api.interceptors.response.use(
-  (response) => response.data,
-  (error) => {
-    console.error('API Error:', error.response?.data || error.message);
-    return Promise.reject(error);
-  }
-);
-```
-
----
-
-## 8. Penyimpanan Lokal (AsyncStorage)
-
-```bash
-npm install @react-native-async-storage/async-storage
-```
-
-Buat **`src/services/storage.ts`**:
-
-```ts
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-export const storeData = async (key: string, value: any) => {
-  try {
-    await AsyncStorage.setItem(key, JSON.stringify(value));
-  } catch (e) {
-    console.error(e);
-  }
-};
-
-export const getData = async (key: string) => {
-  try {
-    const value = await AsyncStorage.getItem(key);
-    return value != null ? JSON.parse(value) : null;
-  } catch (e) {
-    return null;
-  }
-};
-```
-
----
-
-## 9. Komponen Reusable dengan TypeScript
-
-Contoh **`src/components/Button.tsx`**:
-
-```tsx
-import { TouchableOpacity, Text, StyleSheet } from 'react-native';
-
-interface ButtonProps {
-  title: string;
-  onPress: () => void;
-  variant?: 'primary' | 'secondary';
+GET /api/article/
+Deskripsi: Mendapatkan daftar semua artikel.
+Query Parameters:
+skip (number, default: 0)
+limit (number, default: 100, max: 100)
+Response (200 OK): Array of ArticleResponse.
+GET /api/article/{article_id}
+Deskripsi: Mendapatkan detail satu artikel.
+Path Parameters:
+article_id (string, Required)
+Response (200 OK): Objek ArticleResponse.
+PUT /api/article/{article_id}
+Deskripsi: Memperbarui artikel yang sudah dibuat.
+Headers: Authorization: Bearer <access_token>
+Content-Type: application/json
+Path Parameters:
+article_id (string, Required)
+Request Body:
+json
+{
+  "judul": "Judul Baru",      // string (Optional)
+  "isi": "Konten baru...",     // string (Optional)
+  "gambar": "url/path/baru"    // string (Optional)
 }
+Response (200 OK): Objek ArticleResponse yang diperbarui.
+DELETE /api/article/{article_id}
+Deskripsi: Menghapus artikel.
+Headers: Authorization: Bearer <access_token>
+Path Parameters:
+article_id (string, Required)
+Response (200 OK): Pesan status penghapusan.
+4. Pinang Route (/api/pinang)
+Mencatat klasifikasi kualitas pinang hasil dari scan AI.
 
-export const Button = ({ title, onPress, variant = 'primary' }: ButtonProps) => (
-  <TouchableOpacity
-    style={[styles.button, variant === 'primary' ? styles.primary : styles.secondary]}
-    onPress={onPress}
-  >
-    <Text style={styles.text}>{title}</Text>
-  </TouchableOpacity>
-);
-
-const styles = StyleSheet.create({
-  button: { padding: 12, borderRadius: 8, alignItems: 'center' },
-  primary: { backgroundColor: '#007AFF' },
-  secondary: { backgroundColor: '#DDDDDD' },
-  text: { color: '#FFFFFF', fontWeight: '600' },
-});
-```
-
----
-
-## 10. Ikon dan Font
-
-```bash
-npm install @expo/vector-icons
-```
-
-Contoh penggunaan:
-
-```tsx
-import { Ionicons } from '@expo/vector-icons';
-
-<Ionicons name="heart" size={24} color="red" />
-```
-
----
-
-## 11. Testing (Dasar)
-
-```bash
-npm install --save-dev @testing-library/react-native jest
-```
-
-Buat **`src/components/Button.test.tsx`**:
-
-```tsx
-import { render, fireEvent } from '@testing-library/react-native';
-import { Button } from './Button';
-
-test('button triggers onPress', () => {
-  const onPressMock = jest.fn();
-  const { getByText } = render(<Button title="Click" onPress={onPressMock} />);
-  fireEvent.press(getByText('Click'));
-  expect(onPressMock).toHaveBeenCalled();
-});
-```
-
-Jalankan dengan `npm test`.
-
----
-
-## 12. Menjalankan Aplikasi
-
-```bash
-# Untuk menggunakan Expo Go di HP (scan QR code)
-npm start
-
-# Untuk development build (butuh emulator/simulator)
-npx expo run:android   # atau run:ios (Mac)
-```
-
----
-
-## 13. Best Practices Tambahan
-
-- **Absolute Imports** – tambahkan di `tsconfig.json`:
-  ```json
+POST /api/pinang
+Deskripsi: Endpoint scan utama. Menerima data klasifikasi dari scanner AI, melakukan otomatis lookup harga berdasarkan grade, dan mencatatnya ke database history.
+Headers: Authorization: Bearer <access_token>
+Content-Type: multipart/form-data
+Request Body (Form Data):
+jenis_pinang (string, Required)
+kualitas_pinang (string, Required, format: A / B / C)
+tingkat_kekeringan (string, Required)
+deskripsi (string, Optional)
+persentase (string, Optional)
+lokasi (string, Optional)
+perangkat (string, Optional)
+catatan (string, Optional)
+file (File/Binary, Foto pinang yang discan, Optional)
+Response (201 Created - Gabungan data pinang, harga, dan history):
+json
+{
+  "pinang_id": "uuid-pinang",
+  "grade": "A",
+  "jenis_pinang": "Pinang Bulat",
+  "tingkat_kekeringan": "Kering 100%",
+  "deskripsi": "Kondisi sangat bagus",
+  "persentase": "95%",
+  "gambar": "uploads/pinang/foto_pinang.jpg",
+  "harga_per_kg": "12000",             // Hasil lookup otomatis ke master Harga
+  "keterangan_harga": "Harga normal daerah Sumatera",
+  "harga_tidak_ditemukan": false,
+  "history_id": "uuid-history",       // Otomatis terbuat di tabel History
+  "created_at": "2026-06-17T03:40:27Z"
+}
+GET /api/pinang
+Deskripsi: Mendapatkan riwayat data pinang milik user yang login saja.
+Headers: Authorization: Bearer <access_token>
+Query Parameters:
+skip (number, default: 0)
+limit (number, default: 100)
+Response (200 OK): Array of PinangResponse:
+json
+[
   {
-    "compilerOptions": {
-      "baseUrl": ".",
-      "paths": { "@/*": ["src/*"] }
-    }
+    "id": "uuid-pinang",
+    "user_id": "uuid-user",
+    "gambar": "uploads/pinang/foto.jpg",
+    "jenis_pinang": "Pinang Bulat",
+    "kualitas_pinang": "A",
+    "tingkat_kekeringan": "90%",
+    "deskripsi": "Bagus",
+    "persentase": "92%",
+    "created_at": "2026-06-17T03:40:27Z"
   }
-  ```
-  Lalu install `babel-plugin-module-resolver` dan atur di `babel.config.js`.
+]
+GET /api/pinang/{pinang_id}
+Deskripsi: Mendapatkan detail satu data pinang.
+Headers: Authorization: Bearer <access_token>
+Path Parameters:
+pinang_id (string, Required)
+Response (200 OK): Objek PinangResponse.
+5. Harga Route (/api/harga)
+Mengatur data master acuan harga untuk masing-masing grade pinang.
 
-- **Optimasi Rendering** – Gunakan `React.memo`, `useCallback`, `useMemo` hanya jika diperlukan.
+GET /api/harga/
+Deskripsi: Melihat semua daftar harga acuan grade pinang. Dapat diakses oleh siapa saja (Tanpa Auth).
+Query Parameters:
+skip (number, default: 0)
+limit (number, default: 100)
+Response (200 OK):
+json
+[
+  {
+    "id": "uuid-harga",
+    "grade": "A",
+    "harga": "12000",
+    "keterangan": "Harga grade premium"
+  }
+]
+GET /api/harga/{grade}
+Deskripsi: Lookup harga berdasarkan grade tertentu (A/B/C).
+Path Parameters:
+grade (string, Required, misal: a atau A)
+Response (200 OK): Detail harga sesuai grade tersebut.
+POST /api/harga/
+Deskripsi: Menambah master data harga baru (Khusus Admin).
+Headers: Authorization: Bearer <access_token>
+Content-Type: application/json
+Request Body:
+json
+{
+  "grade": "A",               // string (Required, harus unik)
+  "harga": "12000",           // string (Required)
+  "keterangan": "Deskripsi"   // string (Optional)
+}
+Response (201 Created): Objek HargaResponse.
+PUT /api/harga/{harga_id}
+Deskripsi: Memperbarui harga (Khusus Admin). Grade tidak bisa diganti, hanya harga dan keterangan.
+Headers: Authorization: Bearer <access_token>
+Content-Type: application/json
+Path Parameters:
+harga_id (string, Required)
+Request Body:
+json
+{
+  "harga": "13500",           // string (Optional)
+  "keterangan": "Update harga" // string (Optional)
+}
+Response (200 OK): Objek HargaResponse terupdate.
+DELETE /api/harga/{harga_id}
+Deskripsi: Menghapus data acuan harga (Khusus Admin).
+Headers: Authorization: Bearer <access_token>
+Path Parameters:
+harga_id (string, Required)
+Response (200 OK): Status penghapusan.
+6. History Route (/api/history)
+Mencatat riwayat aktivitas scan lengkap beserta lokasinya secara kronologis.
 
-- **Error Boundary** – Bungkus root komponen dengan error boundary agar aplikasi tidak crash total.
-
-- **Environment terpisah** – Buat `.env.development` dan `.env.production` untuk staging/production.
-
-- **Git Ignore** – Pastikan `.env`, `node_modules`, `.expo/`, `dist/` masuk ke `.gitignore`.
-
----
-
-## Kesimpulan
-
-Dengan panduan ini, proyek React Native Anda akan memiliki:
-- Struktur folder yang bersih dan mudah dikembangkan
-- Konsistensi kode dengan ESLint + Prettier
-- Pengelolaan environment variables yang aman
-- Navigasi, state management, dan HTTP client yang siap pakai
-- Komponen reusable dan testing dasar
-
-Selamat belajar dan membangun aplikasi React Native! 🚀
-```
-
-Simpan teks di atas sebagai file `setup-react-native.md` dan gunakan sesuai kebutuhan. Jika ada bagian yang ingin disesuaikan (misalnya mengganti Zustand dengan Redux Toolkit), Anda bisa memodifikasi langsung di file markdown tersebut.
+GET /api/history/
+Deskripsi: Riwayat seluruh scan milik user yang sedang login (Terbaru duluan).
+Headers: Authorization: Bearer <access_token>
+Query Parameters:
+skip (number, default: 0)
+limit (number, default: 100)
+Response (200 OK):
+json
+[
+  {
+    "id": "uuid-history",
+    "user_id": "uuid-user",
+    "pinang_id": "uuid-pinang",
+    "grade": "A",
+    "harga_per_kg": "12000",
+    "keterangan_harga": "Normal",
+    "lokasi": "Padang, Indonesia",
+    "perangkat": "Samsung S21",
+    "catatan": "Kualitas bagus sekali",
+    "created_at": "2026-06-17T03:40:27Z"
+  }
+]
+GET /api/history/{history_id}
+Deskripsi: Detail satu log riwayat scan (Hanya milik user bersangkutan).
+Headers: Authorization: Bearer <access_token>
+Path Parameters:
+history_id (string, Required)
+Response (200 OK): Objek HistoryResponse.
+Tips Integrasi di React Vite (Axios / Fetch)
+Authorization Header: Untuk route yang membutuhkan token, pasang header berikut:
+javascript
+headers: {
+  Authorization: `Bearer ${localStorage.getItem('token')}`
+}
+Multipart/Form-Data: Saat mengirim foto/file pada endpoint POST /api/pinang dan POST /api/article, jangan lupa gunakan instance FormData:
+javascript
+const formData = new FormData();
+formData.append('jenis_pinang', 'Pinang Bulat');
+formData.append('file', fileInput.files[0]); // upload file
+// kirim dengan header 'Content-Type': 'multipart/form-data'

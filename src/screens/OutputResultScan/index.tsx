@@ -1,38 +1,47 @@
 import React from "react";
-import { View, ScrollView, Image, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, ScrollView, Image, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import BottomNavigationBar from "@/components/BottomNavigationBar";
+import { API_URL } from "@env";
 
-export default function OutputResultScan({ navigation }: any) {
+export default function OutputResultScan({ route, navigation }: any) {
+  const scanResult = route?.params?.scanResult;
+  const localImageUri = route?.params?.localImageUri;
+
+  const getFullImageUrl = (path?: string) => {
+    if (!path) return null;
+    if (path.startsWith("http")) return path;
+    const cleanPath = path.startsWith("/") ? path : `/${path}`;
+    if (cleanPath.startsWith("/static/")) {
+      return `${API_URL}${cleanPath}`;
+    }
+    return `${API_URL}/static${cleanPath}`;
+  };
+
+  const imageUrl = getFullImageUrl(scanResult?.gambar) || localImageUri || "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=400";
+
   const handlePress = () => {
     alert("Pressed!");
   };
 
   return (
     <SafeAreaView edges={["top", "left", "right"]} style={styles.container}>
-      <ScrollView style={styles.scrollView}>
-        <View style={styles.headerContainer}>
-          <View style={styles.headerLeft}>
-            <Image
-              source={{ uri: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/VPTfRFh18j/tf2uy9r8_expires_30_days.png" }}
-              resizeMode="stretch"
-              style={styles.headerLogo}
-            />
-            <Text style={styles.headerTitle}>
-              {"Analysis Result"}
-            </Text>
-          </View>
-          <Image
-            source={{ uri: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/VPTfRFh18j/6un8c5o3_expires_30_days.png" }}
-            resizeMode="stretch"
-            style={styles.headerRightIcon}
-          />
+      <View style={styles.headerContainer}>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity onPress={() => navigation.navigate("HomeArecaNut")} style={{ marginRight: 12 }}>
+            <Text style={{ fontSize: 24, color: "#1F1B16" }}>‹</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>
+            {"Hasil Analisis"}
+          </Text>
         </View>
+      </View>
 
+      <ScrollView style={styles.scrollView}>
         <View style={styles.contentWrapper}>
           <Image
-            source={{ uri: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/VPTfRFh18j/8c1ew86x_expires_30_days.png" }}
-            resizeMode="stretch"
+            source={{ uri: imageUrl }}
+            resizeMode="cover"
             style={styles.scanImage}
           />
 
@@ -40,35 +49,40 @@ export default function OutputResultScan({ navigation }: any) {
             <View style={styles.cardHeader}>
               <View style={styles.titleSection}>
                 <Text style={styles.cardTitle}>
-                  {"Arabica Beans"}
+                  {scanResult?.jenis_pinang || "Biji Pinang"}
                 </Text>
                 <Text style={styles.cardDate}>
-                  {"Scanned on Oct 24, 2023"}
+                  {scanResult?.created_at 
+                    ? new Date(scanResult.created_at).toLocaleString("id-ID", {
+                        dateStyle: "medium",
+                        timeStyle: "short"
+                      })
+                    : "Baru Saja dipindai"}
                 </Text>
               </View>
-              <TouchableOpacity style={styles.gradeBadge} onPress={handlePress}>
+              <View style={styles.gradeBadge}>
                 <Text style={styles.gradeText}>
-                  {"Grade A"}
+                  {"Grade " + (scanResult?.grade || "-")}
                 </Text>
-              </TouchableOpacity>
+              </View>
             </View>
 
             <View>
               <View style={styles.infoRow}>
                 <View style={styles.infoRowHeader}>
                   <Text style={styles.infoRowLabel}>
-                    {"Moisture Content"}
+                    {"Persentase Kualitas (AI)"}
                   </Text>
                   <Text style={styles.infoRowValue}>
-                    {"11.5%"}
+                    {scanResult?.persentase || "92%"}
                   </Text>
                 </View>
                 <View style={styles.progressBarContainer}>
-                  <View style={styles.progressBar} />
+                  <View style={[styles.progressBar, { width: scanResult?.persentase || "92%" }]} />
                 </View>
                 <View>
                   <Text style={styles.progressHelperText}>
-                    {"Optimal range for storage"}
+                    {scanResult?.deskripsi || "Kondisi biji pinang optimal"}
                   </Text>
                 </View>
               </View>
@@ -77,21 +91,23 @@ export default function OutputResultScan({ navigation }: any) {
                 <View style={styles.detailItem}>
                   <View style={styles.detailLabelWrapper}>
                     <Text style={styles.detailLabel}>
-                      {"DEFECT COUNT"}
+                      {"KEKERINGAN"}
                     </Text>
                   </View>
                   <Text style={styles.detailValue}>
-                    {"2 / 100g"}
+                    {scanResult?.tingkat_kekeringan || "Kering 90%"}
                   </Text>
                 </View>
                 <View style={styles.detailItemLast}>
                   <View style={styles.detailLabelWrapper}>
                     <Text style={styles.detailLabel}>
-                      {"EST. VALUE"}
+                      {"ESTIMASI HARGA"}
                     </Text>
                   </View>
                   <Text style={styles.detailValueHighlighted}>
-                    {"$4.50/lb"}
+                    {scanResult?.harga_per_kg 
+                      ? "Rp " + parseInt(scanResult.harga_per_kg).toLocaleString("id-ID") + "/kg"
+                      : "Hubungi Admin"}
                   </Text>
                 </View>
               </View>
@@ -99,19 +115,14 @@ export default function OutputResultScan({ navigation }: any) {
           </View>
 
           <View style={styles.actionsContainer}>
-            <TouchableOpacity style={styles.saveButton} onPress={handlePress}>
-              <Image
-                source={{ uri: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/VPTfRFh18j/bcjjd5sb_expires_30_days.png" }}
-                resizeMode="stretch"
-                style={styles.saveIcon}
-              />
+            <TouchableOpacity style={styles.saveButton} onPress={() => navigation.navigate("HomeArecaNut")}>
               <Text style={styles.saveButtonText}>
-                {"Save to Inventory"}
+                {"Kembali ke Beranda"}
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.scanButton} onPress={handlePress}>
+            <TouchableOpacity style={styles.scanButton} onPress={() => navigation.navigate("HomeArecaNut")}>
               <Text style={styles.scanButtonText}>
-                {"Scan Another Batch"}
+                {"Pindai Batch Baru"}
               </Text>
             </TouchableOpacity>
           </View>
@@ -120,7 +131,7 @@ export default function OutputResultScan({ navigation }: any) {
       <BottomNavigationBar
         activeTab="home"
         onPressHome={() => navigation.navigate("HomeArecaNut")}
-        onPressProfile={() => navigation.navigate("Register")}
+        onPressProfile={() => navigation.navigate("Profile")}
         onPressDetection={() => navigation.navigate("OutputResultScan")}
       />
     </SafeAreaView>
