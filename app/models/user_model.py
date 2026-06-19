@@ -23,6 +23,7 @@ class UserModels(Base):
     email: Mapped[str] = mapped_column(String(100), unique=True, nullable=True)
     password: Mapped[str] = mapped_column(String(200), nullable=False)
     role: Mapped[str] = mapped_column(String(20), default=UserRole.USER.value)
+    photoProfile: Mapped[str] = mapped_column(String(500), nullable=True)
     created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 

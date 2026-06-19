@@ -1,6 +1,7 @@
 from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
 from enum import Enum as PyEnum
+from typing import Optional
 
 class UserRole(str, PyEnum):
     USER="petani"
@@ -20,9 +21,19 @@ class GetAllUser(BaseModel):
     username: str
     email: EmailStr
 
+class PhotoProfileUpdate(BaseModel):
+    photoProfile: Optional[str] = None
+
+class UserUpdate(BaseModel):
+    email: Optional[EmailStr] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
+
+
 class UserResponse(BaseModel):
     id: str
     email: str
+    photoProfile: Optional[str] = None
     username: str
     password: str
     role: str

@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.models.user_model import UserModels
-from app.schemas.user_schema import UserCreate
+from app.schemas.user_schema import UserCreate, UserUpdate
 
 class UserRepository:
     # Fungsi menyambungkan ke database
@@ -41,7 +41,35 @@ class UserRepository:
         await self.db.commit()
         await self.db.refresh(new_user)
         return new_user
+
+    #fungsi untuk mengupdate user
+    async def update_user(self, user_id: str, user_data: UserUpdate) -> UserModels | None:
+        user = await self.get_by_id(user_id)
+        if not user:
+            return None
         
+        if user_data.username is not None:
+            user.username = user_data.username
+        if user_data.email is not None:
+            user.email = user_data.email
+        if user_data.password is not None:
+            user.password = user_data.password
+            
+        await self.db.commit()
+        await self.db.refresh(user)
+        return user
+            
+    # fungsi untuk mengupdate foto profile
+    async def update_photo_profile(self, user_id: str, gambar_path: str) -> UserModels | None:
+        user = await self.get_by_id(user_id)
+        if not user:
+            return None
+        user.photoProfile = gambar_path
+        await self.db.commit()
+        await self.db.refresh(user)
+        return user
+
+
     # fungsi untuk mengupdate role
     async def update_role(self, user_id: str, new_role: str) -> UserModels | None:
         user = await self.db.get(UserModels, user_id)
