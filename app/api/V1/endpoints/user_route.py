@@ -69,3 +69,30 @@ async def update_user(
         
     user_service = UserService(db)
     return await user_service.update_user(user_id, user_data)
+
+@router.delete("/{user_id}/delete-foto", response_model=UserResponse, status_code=200)
+async def delete_foto(
+    user_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: UserModels = Depends(get_current_user)
+):
+    # Validasi hak akses
+    if current_user.role != "admin" and current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Tidak memiliki akses untuk menghapus foto ini")
+
+    user_service = UserService(db)
+    return await user_service.delete_photo_profile(user_id)
+
+@router.delete("/{user_id}", status_code=200)
+async def delete_user(
+    user_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: UserModels = Depends(get_current_user)
+):
+    # Validasi hak akses (hanya admin atau pemilik akun yang boleh menghapus)
+    if current_user.role != "admin" and current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Tidak memiliki akses untuk menghapus akun ini")
+
+    user_service = UserService(db)
+    await user_service.delete_user(user_id)
+    return {"message": "Akun user berhasil dihapus"}

@@ -39,3 +39,11 @@ class PinangRepositori:
         await self.db.refresh(new_pinang)
         return new_pinang
 
+    async def delete_pinang(self, pinang_id: str) -> bool:
+        pinang = await self.get_pinang_by_id(pinang_id)
+        if not pinang:
+            return False
+        await self.db.delete(pinang)
+        await self.db.commit()
+        return True
+

@@ -67,3 +67,20 @@ async def create_pinang(
         perangkat=perangkat,
         catatan=catatan
     )
+
+@router.delete("/{pinang_id}", status_code=200)
+async def delete_pinang(
+    pinang_id: str,
+    current_user: UserModels = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Menghapus data hasil scan pinang (termasuk file fisiknya dan history terkait secara cascade)"""
+    service = PinangService(db)
+    
+    # Validasi kepemilikan data (hanya pemilik data atau admin yang boleh menghapus)
+    pinang = await service.get_pinang_by_id(pinang_id)
+    if current_user.role != "admin" and pinang.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Tidak memiliki akses untuk menghapus data ini")
+        
+    await service.delete_pinang(pinang_id)
+    return {"message": "Data pinang berhasil dihapus"}

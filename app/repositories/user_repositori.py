@@ -2,7 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.models.user_model import UserModels
 from app.schemas.user_schema import UserCreate, UserUpdate
-
+import os
 class UserRepository:
     # Fungsi menyambungkan ke database
     def __init__(self, db: AsyncSession):
@@ -58,7 +58,7 @@ class UserRepository:
         await self.db.commit()
         await self.db.refresh(user)
         return user
-            
+
     # fungsi untuk mengupdate foto profile
     async def update_photo_profile(self, user_id: str, gambar_path: str) -> UserModels | None:
         user = await self.get_by_id(user_id)
@@ -79,3 +79,22 @@ class UserRepository:
         await self.db.commit()
         await self.db.refresh(user)
         return user
+
+    # fungsi untuk menghapus photo profile
+    async def delete_foto_profile(self, user_id: str) -> UserModels | None:
+        user = await self.get_by_id(user_id)
+        if not user:
+            return None
+        user.photoProfile = None
+        await self.db.commit()
+        await self.db.refresh(user)
+        return user
+
+    # fungsi untuk menghapus user
+    async def delete_user(self, user_id: str) -> bool:
+        user = await self.get_by_id(user_id)
+        if not user:
+            return False
+        await self.db.delete(user)
+        await self.db.commit()
+        return True

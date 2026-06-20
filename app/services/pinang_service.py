@@ -84,3 +84,22 @@ class PinangService:
         if not pinang:
             raise HTTPException(status_code=404, detail="Data pinang tidak ditemukan")
         return pinang
+
+    async def delete_pinang(self, pinang_id: str) -> bool:
+        pinang = await self.pinang_repo.get_pinang_by_id(pinang_id)
+        if not pinang:
+            raise HTTPException(status_code=404, detail="Data pinang tidak ditemukan")
+
+        # Hapus file fisik gambar jika ada
+        if pinang.gambar:
+            import os
+            from app.core.image import UPLOAD_DIR
+            filename = pinang.gambar.split("/")[-1]
+            file_path = os.path.join(UPLOAD_DIR, filename)
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                except Exception as e:
+                    print(f"Gagal menghapus file fisik pinang: {e}")
+
+        return await self.pinang_repo.delete_pinang(pinang_id)
