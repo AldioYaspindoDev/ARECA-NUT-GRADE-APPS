@@ -22,3 +22,14 @@ class HistoryService:
         if history.user_id != user_id:
             raise HTTPException(status_code=403, detail="Akses tidak diizinkan")
         return history
+
+    async def delete_history(self, history_id: str, user) -> dict:
+        history = await self.history_repo.get_by_id(history_id)
+        if not history:
+            raise HTTPException(status_code=404, detail="Riwayat scan tidak ditemukan")
+        
+        if history.user_id != user.id and user.role != "admin":
+            raise HTTPException(status_code=403, detail="Akses tidak diizinkan")
+            
+        await self.history_repo.delete_history(history)
+        return {"message": "Riwayat berhasil dihapus"}

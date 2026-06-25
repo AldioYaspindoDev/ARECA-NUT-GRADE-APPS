@@ -7,3 +7,5 @@ aiomysql
 python-multipart
 Pillow
 aiofiles
+numpy
+tensorflow

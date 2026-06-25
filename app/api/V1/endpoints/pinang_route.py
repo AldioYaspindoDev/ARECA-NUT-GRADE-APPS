@@ -35,9 +35,9 @@ async def get_pinang_by_id(
 
 @router.post("", response_model=ScanResponse, status_code=201)
 async def create_pinang(
-    jenis_pinang: str = Form(...),
-    kualitas_pinang: str = Form(..., description="Grade hasil AI: A / B / C"),
-    tingkat_kekeringan: str = Form(...),
+    jenis_pinang: Optional[str] = Form(None),
+    kualitas_pinang: Optional[str] = Form(None, description="Grade hasil AI: A / B / C"),
+    tingkat_kekeringan: Optional[str] = Form(None),
     deskripsi: Optional[str] = Form(None),
     persentase: Optional[str] = Form(None),
     lokasi: Optional[str] = Form(None),
@@ -48,21 +48,19 @@ async def create_pinang(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Endpoint scan utama — menerima hasil analisis AI, menyimpan ke Pinang,
-    melakukan lookup harga dari master data, dan mencatat History secara otomatis.
+    Endpoint scan utama — menerima hasil analisis AI atau memprediksi otomatis,
+    menyimpan ke Pinang, melakukan lookup harga dari master data, 
+    dan mencatat History secara otomatis.
     """
-    pinang_data = PinangCreate(
-        jenis_pinang=jenis_pinang,
-        kualitas_pinang=kualitas_pinang.upper(),
-        tingkat_kekeringan=tingkat_kekeringan,
-        deskripsi=deskripsi,
-        persentase=persentase
-    )
     service = PinangService(db)
     return await service.create_pinang(
-        pinang_data,
-        current_user.id,
-        file,
+        user_id=current_user.id,
+        file=file,
+        jenis_pinang=jenis_pinang,
+        kualitas_pinang=kualitas_pinang,
+        tingkat_kekeringan=tingkat_kekeringan,
+        deskripsi=deskripsi,
+        persentase=persentase,
         lokasi=lokasi,
         perangkat=perangkat,
         catatan=catatan

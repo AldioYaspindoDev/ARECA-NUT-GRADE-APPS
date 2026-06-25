@@ -31,3 +31,14 @@ async def get_history_detail(
     """Detail satu riwayat scan (hanya milik user sendiri)"""
     service = HistoryService(db)
     return await service.get_history_by_id(history_id, current_user.id)
+
+
+@router.delete("/{history_id}", status_code=200)
+async def delete_history(
+    history_id: str,
+    current_user: UserModels = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Menghapus data riwayat scan"""
+    service = HistoryService(db)
+    return await service.delete_history(history_id, current_user)

@@ -6,6 +6,7 @@ from app.repositories.history_repositori import HistoryRepositori
 from app.schemas.pinang_schema import PinangCreate, ScanResponse
 from app.schemas.history_schema import HistoryCreate
 from app.services.image_service import save_image
+from app.ml.predict_service import predict_pinang
 from typing import Optional
 
 
@@ -17,22 +18,54 @@ class PinangService:
 
     async def create_pinang(
         self,
-        pinang_data: PinangCreate,
         user_id: str,
         file: Optional[UploadFile] = None,
+        jenis_pinang: Optional[str] = None,
+        kualitas_pinang: Optional[str] = None,
+        tingkat_kekeringan: Optional[str] = None,
+        deskripsi: Optional[str] = None,
+        persentase: Optional[str] = None,
         lokasi: Optional[str] = None,
         perangkat: Optional[str] = None,
         catatan: Optional[str] = None
     ) -> ScanResponse:
-        # 1. Simpan gambar jika ada
+        # 1. Jika ada gambar, dan user tidak mengirim input manual, lakukan prediksi ML
+        if file and (not jenis_pinang or not kualitas_pinang):
+            file_bytes = await file.read()
+            # Reset cursor ke awal agar bisa disimpan lagi di save_image
+            await file.seek(0)
+            
+            # Prediksi menggunakan TFLite
+            pred_result = await predict_pinang(file_bytes)
+            
+            # Gunakan hasil ML untuk field yang kosong
+            jenis_pinang = jenis_pinang or pred_result["jenis_pinang"]
+            kualitas_pinang = kualitas_pinang or pred_result["kualitas_pinang"]
+            tingkat_kekeringan = tingkat_kekeringan or pred_result["tingkat_kekeringan"]
+            deskripsi = deskripsi or pred_result["deskripsi"]
+            persentase = persentase or pred_result["persentase"]
+
+        # 2. Validasi field wajib (kalau ML gagal / gambar gak ada, dan input kosong)
+        if not jenis_pinang or not kualitas_pinang or not tingkat_kekeringan:
+            raise HTTPException(status_code=400, detail="Data jenis, kualitas, dan tingkat kekeringan wajib diisi (atau sediakan gambar untuk deteksi otomatis)")
+
+        pinang_data = PinangCreate(
+            jenis_pinang=jenis_pinang,
+            kualitas_pinang=kualitas_pinang.upper(),
+            tingkat_kekeringan=tingkat_kekeringan,
+            deskripsi=deskripsi,
+            persentase=persentase
+        )
+
+        # 3. Simpan gambar fisik jika ada
         gambar = None
         if file:
             gambar = await save_image(file)
 
-        # 2. Simpan hasil deteksi AI ke tabel Pinang
+        # 4. Simpan hasil deteksi ke tabel Pinang
         pinang = await self.pinang_repo.create_pinang_data(pinang_data, user_id, gambar)
 
-        # 3. Lookup harga dari tabel master Harga berdasarkan grade
+        # 5. Lookup harga dari tabel master Harga berdasarkan grade
         grade = pinang_data.kualitas_pinang
         harga_record = await self.harga_repo.get_by_grade(grade)
 

@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
+from app.schemas.pinang_schema import PinangResponse
 
 
 class HistoryCreate(BaseModel):
@@ -25,6 +26,8 @@ class HistoryResponse(BaseModel):
     perangkat: Optional[str] = None
     catatan: Optional[str] = None
     created_at: Optional[datetime] = None
+    pinang: Optional[PinangResponse] = None
 
     class Config:
         from_attributes = True
+

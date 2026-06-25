@@ -42,3 +42,8 @@ class HistoryRepositori:
         await self.db.commit()
         await self.db.refresh(new_history)
         return new_history
+
+    async def delete_history(self, history: HistoryModels) -> bool:
+        await self.db.delete(history)
+        await self.db.commit()
+        return True
