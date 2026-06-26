@@ -2,3 +2,8 @@
 admin.py
 file.txt
 static/image
+app/static/image/
+logs/
+.venv/
+__pycache__/
+*.pyc
