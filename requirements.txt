@@ -13,3 +13,6 @@ gunicorn
 email-validator
 argon2-cffi
 python-jose[cryptography]
+torch
+torchvision
+clip @ git+https://github.com/openai/CLIP.git
