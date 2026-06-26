@@ -9,7 +9,7 @@ python-multipart
 Pillow
 aiofiles
 numpy
-tflite-runtime
+ai-edge-litert
 gunicorn
 email-validator
 argon2-cffi

@@ -39,11 +39,15 @@ def _get_interpreter():
     global _interpreter
     if _interpreter is None:
         try:
-            # Coba gunakan tflite-runtime terlebih dahulu (lebih ringan)
-            from tflite_runtime.interpreter import Interpreter
+            # Coba gunakan LiteRT (ai-edge-litert) terlebih dahulu (paling ringan & support python 3.12)
+            from ai_edge_litert.interpreter import Interpreter
         except ImportError:
-            # Fallback ke tensorflow
-            from tensorflow.lite.python.interpreter import Interpreter
+            try:
+                # Coba gunakan tflite-runtime
+                from tflite_runtime.interpreter import Interpreter
+            except ImportError:
+                # Fallback ke tensorflow
+                from tensorflow.lite.python.interpreter import Interpreter
 
         if not os.path.exists(MODEL_PATH):
             raise FileNotFoundError(f"Model TFLite tidak ditemukan di: {MODEL_PATH}")
