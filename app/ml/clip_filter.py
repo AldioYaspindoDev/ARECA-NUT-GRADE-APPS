@@ -57,6 +57,18 @@ class CLIPFilter:
             self.text_features = self.model.encode_text(self.text_tokens)
             self.text_features /= self.text_features.norm(dim=-1, keepdim=True)
 
+        # Hapus bagian text encoder yang tidak digunakan lagi untuk menghemat memori
+        try:
+            del self.model.transformer
+            del self.model.token_embedding
+            del self.model.ln_final
+            del self.model.text_projection
+            import gc
+            gc.collect()
+            print("✂️ Deleted CLIP text encoder from memory to save RAM")
+        except Exception as e:
+            print(f"⚠️ Failed to delete text encoder: {e}")
+
     def is_valid(self, image_bytes: bytes) -> Tuple[bool, float, str]:
         """
         Periksa apakah gambar sesuai dengan kategori yang diizinkan.

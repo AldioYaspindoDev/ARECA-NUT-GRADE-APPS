@@ -28,12 +28,6 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     print("🟢 Database Connected — semua tabel siap")
-    try:
-        print("⏳ Loading CLIP model...")
-        load_clip_model()
-        print("✅ CLIP model loaded successfully")
-    except Exception as e:
-        print(f"❌ Failed to load CLIP model: {e}")
     yield
     await engine.dispose()
     print("🔴 Database Connection Closed")
