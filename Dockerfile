@@ -2,7 +2,7 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install system dependencies (git tidak perlu lagi karena CLIP dihapus)
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     libgl1 \
     libglib2.0-0 \
@@ -15,8 +15,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy backend source files
 COPY . .
 
-# Ensure logs directory exists
-RUN mkdir -p logs
+# Ensure static image & logs directory exists
+RUN mkdir -p app/static/image logs
 
 EXPOSE 8000
 

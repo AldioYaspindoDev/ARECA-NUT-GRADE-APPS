@@ -1,0 +1,26 @@
+# Virtual environment
+.venv/
+venv/
+
+# Environment variables (jangan ikut ke image)
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Logs
+logs/
+
+# Static images (tidak perlu di-copy ke image)
+app/static/image/
+
+# Git
+.git/
+.gitignore
+
+# Dev files
+admin.py
+file.txt
