@@ -12,3 +12,4 @@ tensorflow
 gunicorn
 email-validator
 argon2-cffi
+python-jose[cryptography]
