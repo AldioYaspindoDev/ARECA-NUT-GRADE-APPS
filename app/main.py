@@ -20,9 +20,6 @@ from app.models.pinang_model import PinangModels
 from app.models.harga_model import HargaModels
 from app.models.history_model import HistoryModels
 
-
-from app.ml.clip_filter import load_clip_model
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:

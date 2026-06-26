@@ -1,36 +1,19 @@
-import clip
-import torch
+import gc
 from PIL import Image
 import io
-from functools import lru_cache
 from typing import Tuple, List
-
-
-@lru_cache(maxsize=1)
-def load_clip_model() -> Tuple:
-    """
-    Load model CLIP sekali saat startup, cache untuk reuse.
-    Gunakan ViT-B/32 untuk keseimbangan kecepatan dan akurasi.
-    Opsi lain: ViT-L/14 (lebih akurat, lebih lambat)
-    """
-    # Batasi thread PyTorch untuk menghemat memori di container kecil (Render Free Tier 512MB RAM)
-    torch.set_num_threads(1)
-    torch.set_num_interop_threads(1)
-    
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    model, preprocess = clip.load("ViT-B/32", device=device)
-    model.eval()
-    
-    # Bersihkan memori sisa dari proses pemuatan model
-    import gc
-    gc.collect()
-    
-    return model, preprocess, device
 
 
 class CLIPFilter:
     """
     Filter gambar menggunakan CLIP zero-shot classification.
+    
+    Strategi memori: Model CLIP + PyTorch dimuat saat dibutuhkan dan langsung
+    dibuang setelah selesai. Ini menghemat ~350MB RAM saat idle, penting untuk
+    Render Free Tier (512MB RAM).
+    
+    PyTorch dan CLIP di-import secara lazy (bukan di top level) agar RAM hanya
+    terpakai saat ada request scan.
     
     Parameters:
         positive_prompts: daftar deskripsi gambar yang DITERIMA
@@ -47,31 +30,14 @@ class CLIPFilter:
         self.positive_prompts = positive_prompts
         self.negative_prompts = negative_prompts
         self.threshold = threshold
-        self.model, self.preprocess, self.device = load_clip_model()
-
-        # Tokenize semua prompt sekali, cache hasilnya
-        all_prompts = positive_prompts + negative_prompts
-        self.text_tokens = clip.tokenize(all_prompts).to(self.device)
-
-        with torch.no_grad():
-            self.text_features = self.model.encode_text(self.text_tokens)
-            self.text_features /= self.text_features.norm(dim=-1, keepdim=True)
-
-        # Hapus bagian text encoder yang tidak digunakan lagi untuk menghemat memori
-        try:
-            del self.model.transformer
-            del self.model.token_embedding
-            del self.model.ln_final
-            del self.model.text_projection
-            import gc
-            gc.collect()
-            print("✂️ Deleted CLIP text encoder from memory to save RAM")
-        except Exception as e:
-            print(f"⚠️ Failed to delete text encoder: {e}")
+        # Hanya simpan prompt, TIDAK load model atau import torch di constructor
+        self.all_prompts = positive_prompts + negative_prompts
 
     def is_valid(self, image_bytes: bytes) -> Tuple[bool, float, str]:
         """
         Periksa apakah gambar sesuai dengan kategori yang diizinkan.
+        
+        Model CLIP + PyTorch di-load, digunakan, lalu langsung di-unload dari RAM.
 
         Returns:
             (is_valid, confidence_score, message)
@@ -81,29 +47,64 @@ class CLIPFilter:
         except Exception:
             return False, 0.0, "File bukan gambar yang valid"
 
-        image_tensor = self.preprocess(image).unsqueeze(0).to(self.device)
+        model = None
+        try:
+            # === LAZY IMPORT — hanya saat dibutuhkan ===
+            import torch
+            import clip
 
-        with torch.no_grad():
-            image_features = self.model.encode_image(image_tensor)
-            image_features /= image_features.norm(dim=-1, keepdim=True)
+            torch.set_num_threads(1)
+            torch.set_num_interop_threads(1)
 
-            # Hitung similarity dengan semua prompt
-            similarities = (image_features @ self.text_features.T).squeeze(0)
-            
-            # Kalikan dengan logit_scale agar perbedaan similarity terlihat signifikan setelah softmax
-            logit_scale = self.model.logit_scale.exp()
-            probs = (similarities * logit_scale).softmax(dim=0).cpu().numpy()
+            # === LOAD ===
+            device = "cpu"
+            model, preprocess = clip.load("ViT-B/32", device=device)
+            model.eval()
 
-        # Jumlahkan probabilitas untuk positive prompts
-        n_positive = len(self.positive_prompts)
-        positive_score = float(probs[:n_positive].sum())
+            # Tokenize prompts
+            text_tokens = clip.tokenize(self.all_prompts).to(device)
 
-        is_valid = positive_score >= self.threshold
-        message = (
-            "Gambar valid, melanjutkan ke analisis"
-            if is_valid
-            else f"Gambar tidak sesuai (skor: {positive_score:.2f}). "
-                 f"Harap upload gambar yang tepat."
-        )
+            with torch.no_grad():
+                # Encode text
+                text_features = model.encode_text(text_tokens)
+                text_features /= text_features.norm(dim=-1, keepdim=True)
 
-        return is_valid, positive_score, message
+                # Encode image
+                image_tensor = preprocess(image).unsqueeze(0).to(device)
+                image_features = model.encode_image(image_tensor)
+                image_features /= image_features.norm(dim=-1, keepdim=True)
+
+                # Hitung similarity
+                similarities = (image_features @ text_features.T).squeeze(0)
+                logit_scale = model.logit_scale.exp()
+                probs = (similarities * logit_scale).softmax(dim=0).cpu().numpy()
+
+            # Jumlahkan probabilitas untuk positive prompts
+            n_positive = len(self.positive_prompts)
+            positive_score = float(probs[:n_positive].sum())
+
+            is_valid = positive_score >= self.threshold
+            message = (
+                "Gambar valid, melanjutkan ke analisis"
+                if is_valid
+                else f"Gambar tidak sesuai (skor: {positive_score:.2f}). "
+                     f"Harap upload gambar yang tepat."
+            )
+
+            return is_valid, positive_score, message
+
+        except Exception as e:
+            return False, 0.0, f"Gagal memproses gambar dengan CLIP: {str(e)}"
+
+        finally:
+            # === UNLOAD — bebaskan semua memori ===
+            if model is not None:
+                del model
+            gc.collect()
+            print("[CLIP] Model unloaded from memory")
+
+
+# Fungsi ini tetap ada untuk backward compatibility tapi tidak melakukan apa-apa
+def load_clip_model():
+    """Deprecated: CLIP model sekarang di-load on-demand di CLIPFilter.is_valid()"""
+    pass

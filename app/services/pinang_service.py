@@ -10,28 +10,25 @@ from app.ml.predict_service import predict_pinang
 from app.ml.clip_filter import CLIPFilter
 from typing import Optional
 
-_clip_filter = None
+def _create_clip_filter() -> CLIPFilter:
+    """Create a lightweight CLIPFilter instance (model is loaded on-demand in is_valid)."""
+    return CLIPFilter(
+        positive_prompts=[
+            "a photo of areca nut",
+            "a photo of betel nut",
+            "a close-up photo of pinang fruit",
+            "a photo of areca palm fruit",
+        ],
+        negative_prompts=[
+            "a photo of something else",
+            "a photo of a person",
+            "a photo of an animal",
+            "a photo of a landscape",
+            "a photo of food that is not areca nut",
+        ],
+        threshold=0.55
+    )
 
-def get_clip_filter() -> CLIPFilter:
-    global _clip_filter
-    if _clip_filter is None:
-        _clip_filter = CLIPFilter(
-            positive_prompts=[
-                "a photo of areca nut",
-                "a photo of betel nut",
-                "a close-up photo of pinang fruit",
-                "a photo of areca palm fruit",
-            ],
-            negative_prompts=[
-                "a photo of something else",
-                "a photo of a person",
-                "a photo of an animal",
-                "a photo of a landscape",
-                "a photo of food that is not areca nut",
-            ],
-            threshold=0.55
-        )
-    return _clip_filter
 
 
 class PinangService:
@@ -60,7 +57,7 @@ class PinangService:
             await file.seek(0)
             
             # Jalankan filter CLIP
-            is_valid, confidence, message = get_clip_filter().is_valid(file_bytes)
+            is_valid, confidence, message = _create_clip_filter().is_valid(file_bytes)
             if not is_valid:
                 raise HTTPException(
                     status_code=422,
