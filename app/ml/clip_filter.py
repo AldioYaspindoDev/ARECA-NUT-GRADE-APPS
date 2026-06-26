@@ -13,9 +13,18 @@ def load_clip_model() -> Tuple:
     Gunakan ViT-B/32 untuk keseimbangan kecepatan dan akurasi.
     Opsi lain: ViT-L/14 (lebih akurat, lebih lambat)
     """
+    # Batasi thread PyTorch untuk menghemat memori di container kecil (Render Free Tier 512MB RAM)
+    torch.set_num_threads(1)
+    torch.set_num_interop_threads(1)
+    
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model, preprocess = clip.load("ViT-B/32", device=device)
     model.eval()
+    
+    # Bersihkan memori sisa dari proses pemuatan model
+    import gc
+    gc.collect()
+    
     return model, preprocess, device
 
 
