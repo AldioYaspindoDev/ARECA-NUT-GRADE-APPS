@@ -13,14 +13,15 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.aldio.arecanut"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true,
+      "package": "com.aldio.arecanut",
       "predictiveBackGestureEnabled": false
     },
     "web": {
@@ -28,7 +29,13 @@
     },
     "plugins": [
       "expo-status-bar",
-      "expo-secure-store"
-    ]
+      "expo-secure-store",
+      "./withGradleWrapper.js"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "15d99907-1e37-40c9-8b21-816460d632f9"
+      }
+    }
   }
 }
