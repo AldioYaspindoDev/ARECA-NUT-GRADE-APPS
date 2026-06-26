@@ -132,7 +132,7 @@ export default function OutputResultScan({ route, navigation }: any) {
         activeTab="home"
         onPressHome={() => navigation.navigate("HomeArecaNut")}
         onPressProfile={() => navigation.navigate("Profile")}
-        onPressDetection={() => navigation.navigate("OutputResultScan")}
+        onPressDetection={() => navigation.navigate("HomeArecaNut", { triggerCamera: true })}
       />
     </SafeAreaView>
   );
@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   titleSection: {
-    alignItems: "center",
+    alignItems: "flex-start",
   },
   cardTitle: {
     color: "#1F1B16",

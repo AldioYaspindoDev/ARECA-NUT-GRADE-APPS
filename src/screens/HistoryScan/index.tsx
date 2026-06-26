@@ -8,10 +8,13 @@ import {
   StyleSheet,
   ActivityIndicator,
   Dimensions,
+  Alert,
+  Share,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { getScanHistory, HistoryItem } from "@/services/pinangService";
+import { getScanHistory, HistoryItem, deleteScanHistory } from "@/services/pinangService";
 import { API_URL } from "@env";
+import { Feather } from "@expo/vector-icons";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -20,13 +23,10 @@ export default function HistoryScan({ navigation }: any) {
   const [loading, setLoading] = useState(true);
 
   const getFullImageUrl = (path?: string) => {
-    if (!path) return null;
-    if (path.startsWith("http")) return path;
-    const cleanPath = path.startsWith("/") ? path : `/${path}`;
-    if (cleanPath.startsWith("/static/")) {
-      return `${API_URL}${cleanPath}`;
-    }
-    return `${API_URL}/static${cleanPath}`;
+    if (!path) return "https://placehold.co/80x80?text=No+Image";
+    if (path.startsWith("http://") || path.startsWith("https://")) return path;
+    const cleanPath = path.startsWith("/") ? path.substring(1) : path;
+    return `${API_URL}/${cleanPath}`;
   };
 
   useEffect(() => {
@@ -44,6 +44,61 @@ export default function HistoryScan({ navigation }: any) {
       setLoading(false);
     }
   };
+
+  const handleSaveResult = async (item: HistoryItem) => {
+    try {
+      const formattedDate = new Date(item.created_at).toLocaleString("id-ID", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
+      const priceText = item.harga_per_kg
+        ? `Rp ${parseInt(item.harga_per_kg).toLocaleString("id-ID")}/kg`
+        : "Hubungi Admin";
+      const message = `*Hasil Analisis Klasifikasi Pinang - ArecaNut*\n\n` +
+        `• Jenis Pinang: ${item.pinang?.jenis_pinang || "Pinang"}\n` +
+        `• Kualitas: Grade ${item.grade || "-"}\n` +
+        `• Tingkat Kekeringan: ${item.pinang?.tingkat_kekeringan || "-"}\n` +
+        `• Estimasi Harga: ${priceText}\n` +
+        `• Persentase Kualitas: ${item.pinang?.persentase || "92%"}\n` +
+        `• Waktu Scan: ${formattedDate}\n\n` +
+        `Hasil klasifikasi ini dihasilkan secara otomatis oleh sistem AI ArecaNut.`;
+      
+      await Share.share({
+        message,
+        title: "Hasil Klasifikasi Biji Pinang",
+      });
+    } catch (error) {
+      console.error("Gagal membagikan hasil:", error);
+      Alert.alert("Error", "Gagal menyimpan/membagikan hasil klasifikasi.");
+    }
+  };
+
+  const handleDeleteHistory = (id: string) => {
+    Alert.alert(
+      "Hapus Riwayat",
+      "Apakah Anda yakin ingin menghapus riwayat pemindaian ini?",
+      [
+        { text: "Batal", style: "cancel" },
+        {
+          text: "Hapus",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setLoading(true);
+              await deleteScanHistory(id);
+              Alert.alert("Berhasil", "Riwayat pemindaian berhasil dihapus.");
+              fetchHistory();
+            } catch (error) {
+              console.error("Gagal menghapus riwayat:", error);
+              Alert.alert("Gagal", "Tidak dapat menghapus riwayat pemindaian.");
+              setLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
 
   const getGradeColor = (grade: string) => {
     switch (grade?.toUpperCase()) {
@@ -101,77 +156,92 @@ export default function HistoryScan({ navigation }: any) {
             const gradeColor = getGradeColor(item.grade);
 
             return (
-              <TouchableOpacity
-                key={item.id}
-                activeOpacity={0.7}
-                onPress={() =>
-                  navigation.navigate("OutputResultScan", {
-                    scanResult: {
-                      pinang_id: item.pinang_id,
-                      grade: item.grade,
-                      jenis_pinang: item.pinang?.jenis_pinang || "Pinang",
-                      tingkat_kekeringan: item.pinang?.tingkat_kekeringan || "-",
-                      deskripsi: item.pinang?.deskripsi,
-                      persentase: item.pinang?.persentase,
-                      gambar: item.pinang?.gambar,
-                      harga_per_kg: item.harga_per_kg,
-                      keterangan_harga: item.keterangan_harga,
-                      history_id: item.id,
-                      created_at: item.created_at,
-                    },
-                  })
-                }
-                style={styles.card}
-              >
-                {/* Image */}
-                {imageUrl ? (
-                  <Image source={{ uri: imageUrl }} style={styles.cardImage} />
-                ) : (
-                  <View style={styles.cardImagePlaceholder}>
-                    <Text style={styles.placeholderEmoji}>🥜</Text>
-                  </View>
-                )}
+              <View key={item.id} style={styles.card}>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() =>
+                    navigation.navigate("OutputResultScan", {
+                      scanResult: {
+                        pinang_id: item.pinang_id,
+                        grade: item.grade,
+                        jenis_pinang: item.pinang?.jenis_pinang || "Pinang",
+                        tingkat_kekeringan: item.pinang?.tingkat_kekeringan || "-",
+                        deskripsi: item.pinang?.deskripsi,
+                        persentase: item.pinang?.persentase,
+                        gambar: item.pinang?.gambar,
+                        harga_per_kg: item.harga_per_kg,
+                        keterangan_harga: item.keterangan_harga,
+                        history_id: item.id,
+                        created_at: item.created_at,
+                      },
+                    })
+                  }
+                  style={styles.cardMainContent}
+                >
+                  {/* Image */}
+                  {imageUrl ? (
+                    <Image source={{ uri: imageUrl }} style={styles.cardImage} />
+                  ) : (
+                    <View style={styles.cardImagePlaceholder}>
+                      <Text style={styles.placeholderEmoji}>No Images</Text>
+                    </View>
+                  )}
 
-                {/* Content */}
-                <View style={styles.cardBody}>
-                  <View style={styles.cardTopRow}>
-                    <Text style={styles.cardTitle} numberOfLines={1}>
-                      {item.pinang?.jenis_pinang || "Pinang"}
-                    </Text>
-                    <View style={[styles.gradeBadge, { backgroundColor: gradeColor.bg, borderColor: gradeColor.border }]}>
-                      <Text style={[styles.gradeText, { color: gradeColor.text }]}>
-                        Grade {item.grade}
+                  {/* Content */}
+                  <View style={styles.cardBody}>
+                    <View style={styles.cardTopRow}>
+                      <Text style={styles.cardTitle} numberOfLines={1}>
+                        {item.pinang?.jenis_pinang || "Pinang"}
+                      </Text>
+                      <View style={[styles.gradeBadge, { backgroundColor: gradeColor.bg, borderColor: gradeColor.border }]}>
+                        <Text style={[styles.gradeText, { color: gradeColor.text }]}>
+                          Grade {item.grade}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.cardInfoRow}>
+                      <Text style={styles.dateText}>
+                        {" "}
+                        {new Date(item.created_at).toLocaleString("id-ID", {
+                          dateStyle: "medium",
+                          timeStyle: "short",
+                        })}
+                      </Text>
+                    </View>
+
+                    <View style={styles.cardBottomRow}>
+                      <Text style={styles.priceText}>
+                        Rp {parseInt(item.harga_per_kg).toLocaleString("id-ID")}/kg
                       </Text>
                     </View>
                   </View>
 
-                  <View style={styles.cardInfoRow}>
-                    <Text style={styles.dateText}>
-                      📅{" "}
-                      {new Date(item.created_at).toLocaleString("id-ID", {
-                        dateStyle: "medium",
-                        timeStyle: "short",
-                      })}
-                    </Text>
+                  {/* Chevron */}
+                  <View style={styles.chevronContainer}>
+                    <Text style={styles.chevron}>›</Text>
                   </View>
+                </TouchableOpacity>
 
-                  <View style={styles.cardBottomRow}>
-                    <Text style={styles.priceText}>
-                      Rp {parseInt(item.harga_per_kg).toLocaleString("id-ID")}/kg
-                    </Text>
-                    {item.pinang?.tingkat_kekeringan && (
-                      <View style={styles.kekeringanBadge}>
-                        <Text style={styles.kekeringanText}>💧 {item.pinang.tingkat_kekeringan}</Text>
-                      </View>
-                    )}
-                  </View>
+                {/* Card Actions Footer */}
+                <View style={styles.cardDivider} />
+                <View style={styles.cardActions}>
+                  <TouchableOpacity
+                    style={styles.saveActionButton}
+                    onPress={() => handleSaveResult(item)}
+                  >
+                    <Feather name="share-2" size={16} color="#572B18" style={{ marginRight: 6 }} />
+                    <Text style={styles.saveActionText}>Simpan</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.deleteActionButton}
+                    onPress={() => handleDeleteHistory(item.id)}
+                  >
+                    <Feather name="trash-2" size={16} color="#C53929" style={{ marginRight: 6 }} />
+                    <Text style={styles.deleteActionText}>Hapus</Text>
+                  </TouchableOpacity>
                 </View>
-
-                {/* Chevron */}
-                <View style={styles.chevronContainer}>
-                  <Text style={styles.chevron}>›</Text>
-                </View>
-              </TouchableOpacity>
+              </View>
             );
           })
         )}
@@ -194,7 +264,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 16,
     paddingHorizontal: 16,
-    backgroundColor: "#C99B82",
+    backgroundColor: "#572B18",
     borderBottomRightRadius: 20,
     borderBottomLeftRadius: 20,
     shadowColor: "#000",
@@ -288,16 +358,57 @@ const styles = StyleSheet.create({
 
   // ── Card ──
   card: {
-    flexDirection: "row",
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
-    padding: 12,
     marginBottom: 12,
     shadowColor: "#000",
     shadowOpacity: 0.08,
     shadowOffset: { width: 0, height: 3 },
     shadowRadius: 8,
     elevation: 4,
+    overflow: "hidden",
+  },
+  cardMainContent: {
+    flexDirection: "row",
+    padding: 12,
+  },
+  cardDivider: {
+    height: 1,
+    backgroundColor: "#EBEBEB",
+    marginHorizontal: 12,
+  },
+  cardActions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: "#FAFAF9",
+  },
+  saveActionButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: "#EFEBE9",
+  },
+  saveActionText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#572B18",
+  },
+  deleteActionButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: "#FCE8E6",
+  },
+  deleteActionText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#C53929",
   },
   cardImage: {
     width: 80,

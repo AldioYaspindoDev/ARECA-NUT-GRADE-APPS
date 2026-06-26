@@ -6,6 +6,7 @@ interface UserProfile {
   id: string;
   email: string;
   username: string;
+  photoProfile: string,
   role: string;
   created_at: string;
 }

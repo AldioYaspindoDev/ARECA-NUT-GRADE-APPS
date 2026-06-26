@@ -24,7 +24,14 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CAROUSEL_PADDING = 16;
 const CAROUSEL_SLIDE_WIDTH = SCREEN_WIDTH - CAROUSEL_PADDING * 2;
 
-export default function HomeArecaNut({ navigation }: any) {
+  // Daftarkan gambar lokal di sini
+const CAROUSEL_ITEMS = [
+  { id: 1, image: require("@/assets/Carrousel1.png") },
+  { id: 2, image: require("@/assets/Carrousel2.png") },
+  { id: 3, image: require("@/assets/Carrousel3.png") },
+];
+
+export default function HomeArecaNut({ navigation, route }: any) {
   const [articles, setArticles] = useState<Article[]>([]);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [prices, setPrices] = useState<HargaItem[]>([]);
@@ -52,6 +59,13 @@ export default function HomeArecaNut({ navigation }: any) {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (route.params?.triggerCamera) {
+      navigation.setParams({ triggerCamera: undefined });
+      handlePickImage(true);
+    }
+  }, [route.params?.triggerCamera]);
 
   const fetchData = async () => {
     try {
@@ -116,20 +130,16 @@ export default function HomeArecaNut({ navigation }: any) {
     setIsScanning(true);
     try {
       const formData = new FormData();
-      const uriParts = imageUri.split(".");
-      const fileType = uriParts[uriParts.length - 1];
+      const filename = imageUri.split("/").pop() || "scan_pinang.jpg";
+      const match = /\.(\w+)$/.exec(filename);
+      const fileType = match ? match[1] : "jpg";
 
       formData.append("file", {
         uri: imageUri,
-        name: `scan_pinang.${fileType}`,
+        name: filename,
         type: `image/${fileType === "png" ? "png" : "jpeg"}`,
       } as any);
 
-      formData.append("jenis_pinang", "Pinang Bulat");
-      formData.append("kualitas_pinang", "A");
-      formData.append("tingkat_kekeringan", "Kering 90%");
-      formData.append("deskripsi", "Di-scan menggunakan aplikasi mobile");
-      formData.append("persentase", "92%");
       formData.append("lokasi", "Padang, Indonesia");
       formData.append("perangkat", "Mobile Device");
       formData.append("catatan", "Auto-scan");
@@ -139,7 +149,25 @@ export default function HomeArecaNut({ navigation }: any) {
       navigation.navigate("OutputResultScan", { scanResult: result, localImageUri: imageUri });
     } catch (error: any) {
       console.error("Scan error:", error);
-      Alert.alert("Gagal Memindai", error.response?.data?.message || "Tidak dapat menghubungi server backend.");
+      const detail = error.response?.data?.detail;
+      let displayMessage = "Tidak dapat menghubungi server backend.";
+      
+      if (detail) {
+        if (typeof detail === "string") {
+          displayMessage = detail;
+        } else if (typeof detail === "object") {
+          displayMessage = detail.message || detail.error || JSON.stringify(detail);
+          if (detail.hint) {
+            displayMessage += `\n\nHint: ${detail.hint}`;
+          }
+        }
+      } else if (error.response?.data?.message) {
+        displayMessage = error.response.data.message;
+      } else if (error.message) {
+        displayMessage = error.message;
+      }
+      
+      Alert.alert("Gagal Memindai", displayMessage);
     } finally {
       setIsScanning(false);
     }
@@ -224,7 +252,7 @@ export default function HomeArecaNut({ navigation }: any) {
           </View>
         </View>
 
-        {/* ===== Ad Carousel Placeholder ===== */}
+                {/* ===== Ad Carousel ===== */}
         <View style={styles.carouselWrapper}>
           <ScrollView
             horizontal
@@ -234,21 +262,29 @@ export default function HomeArecaNut({ navigation }: any) {
             scrollEventThrottle={16}
             style={styles.carousel}
           >
-            {[0, 1, 2].map((i) => (
-              <View key={i} style={styles.carouselSlide}>
-                <View style={styles.adPlaceholder}>
-                  <Text style={styles.adText}>Iklan {i + 1}</Text>
-                </View>
+            {CAROUSEL_ITEMS.map((item) => (
+              <View key={item.id} style={styles.carouselSlide}>
+                <Image 
+                  source={item.image} 
+                  style={{ 
+                    width: '100%', 
+                    height: 130, 
+                    borderRadius: 12, 
+                    resizeMode: 'cover' 
+                  }} 
+                />
               </View>
             ))}
           </ScrollView>
+          
           {/* Dots indicator */}
           <View style={styles.dotsContainer}>
-            {[0, 1, 2].map((i) => (
+            {CAROUSEL_ITEMS.map((_, i) => (
               <View key={i} style={[styles.dot, activeSlide === i && styles.dotActive]} />
             ))}
           </View>
         </View>
+
 
         {/* ===== History Section ===== */}
         <View style={styles.sectionContainer}>
@@ -373,7 +409,7 @@ export default function HomeArecaNut({ navigation }: any) {
         activeTab="home"
         onPressHome={() => navigation.navigate("HomeArecaNut")}
         onPressProfile={() => navigation.navigate("Profile")}
-        onPressDetection={() => navigation.navigate("OutputResultScan")}
+        onPressDetection={() => handlePickImage(true)}
       />
 
       {/* ===== Modal Pantau Harga ===== */}
@@ -458,7 +494,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 12,
     marginBottom: 16,
-    backgroundColor: "#C99B82",
+    backgroundColor: "#572B18",
     borderRadius: 16,
     paddingVertical: 20,
     paddingHorizontal: 16,

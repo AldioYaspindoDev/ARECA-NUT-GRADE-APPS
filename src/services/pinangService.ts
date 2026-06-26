@@ -88,3 +88,14 @@ export const getScanHistoryDetail = async (id: string): Promise<HistoryItem> => 
     throw error;
   }
 };
+
+export const deleteScanHistory = async (id: string): Promise<any> => {
+  try {
+    const response = await api.delete(`/api/history/${id}`);
+    return response;
+  } catch (error) {
+    console.error(`Error deleting history ${id}:`, error);
+    throw error;
+  }
+};
+
