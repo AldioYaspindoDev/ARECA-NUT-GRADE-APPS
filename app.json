@@ -30,7 +30,8 @@
     "plugins": [
       "expo-status-bar",
       "expo-secure-store",
-      "./withGradleWrapper.js"
+      "./withGradleWrapper.js",
+      "expo-font"
     ],
     "extra": {
       "eas": {
