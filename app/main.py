@@ -40,26 +40,31 @@ async def lifespan(app: FastAPI):
 
 
 from fastapi.middleware.cors import CORSMiddleware
+from app.core.logger import setup_logger
+
+# Initialize logging configuration
+setup_logger()
 
 BASE_DIR = Path(__file__).resolve().parent
+
+is_production = settings.APP_ENV == "production"
 
 app = FastAPI(
     title="Arecanut Grade API",
     description="API untuk klasifikasi grade biji pinang berbasis AI",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
+    docs_url=None if is_production else "/docs",
+    redoc_url=None if is_production else "/redoc",
+    openapi_url=None if is_production else "/openapi.json"
 )
 
-# Konfigurasi CORS agar Vite (frontend) bisa memanggil API
+# Konfigurasi CORS agar frontend bisa memanggil API
+allowed_origins_list = [origin.strip() for origin in settings.ALLOWED_ORIGINS.split(",") if origin.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://0.0.0.0:8000:",
-    ],
+    allow_origins=allowed_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

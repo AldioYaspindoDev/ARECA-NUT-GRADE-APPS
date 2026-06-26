@@ -9,3 +9,5 @@ Pillow
 aiofiles
 numpy
 tensorflow
+gunicorn
+email-validator
