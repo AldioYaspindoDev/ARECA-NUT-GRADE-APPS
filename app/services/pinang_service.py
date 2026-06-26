@@ -7,8 +7,26 @@ from app.schemas.pinang_schema import PinangCreate, ScanResponse
 from app.schemas.history_schema import HistoryCreate
 from app.services.image_service import save_image
 from app.ml.predict_service import predict_pinang
+from app.ml.clip_filter import CLIPFilter
 from typing import Optional
 
+# Inisialisasi CLIP Filter
+clip_filter = CLIPFilter(
+    positive_prompts=[
+        "a photo of areca nut",
+        "a photo of betel nut",
+        "a close-up photo of pinang fruit",
+        "a photo of areca palm fruit",
+    ],
+    negative_prompts=[
+        "a photo of something else",
+        "a photo of a person",
+        "a photo of an animal",
+        "a photo of a landscape",
+        "a photo of food that is not areca nut",
+    ],
+    threshold=0.55  # tuning sesuai kebutuhan
+)
 
 class PinangService:
     def __init__(self, db: AsyncSession):
@@ -29,21 +47,36 @@ class PinangService:
         perangkat: Optional[str] = None,
         catatan: Optional[str] = None
     ) -> ScanResponse:
-        # 1. Jika ada gambar, dan user tidak mengirim input manual, lakukan prediksi ML
-        if file and (not jenis_pinang or not kualitas_pinang):
+        # 1. Jika ada gambar, lakukan validasi CLIP terlebih dahulu
+        if file:
             file_bytes = await file.read()
             # Reset cursor ke awal agar bisa disimpan lagi di save_image
             await file.seek(0)
             
-            # Prediksi menggunakan TFLite
-            pred_result = await predict_pinang(file_bytes)
+            # Jalankan filter CLIP
+            is_valid, confidence, message = clip_filter.is_valid(file_bytes)
+            if not is_valid:
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": "Gambar tidak valid",
+                        "message": message,
+                        "clip_score": round(confidence, 4),
+                        "hint": "Pastikan gambar menampilkan biji pinang dengan jelas"
+                    }
+                )
             
-            # Gunakan hasil ML untuk field yang kosong
-            jenis_pinang = jenis_pinang or pred_result["jenis_pinang"]
-            kualitas_pinang = kualitas_pinang or pred_result["kualitas_pinang"]
-            tingkat_kekeringan = tingkat_kekeringan or pred_result["tingkat_kekeringan"]
-            deskripsi = deskripsi or pred_result["deskripsi"]
-            persentase = persentase or pred_result["persentase"]
+            # Jika user tidak mengirim input manual, lakukan prediksi ML
+            if not jenis_pinang or not kualitas_pinang:
+                # Prediksi menggunakan TFLite
+                pred_result = await predict_pinang(file_bytes)
+                
+                # Gunakan hasil ML untuk field yang kosong
+                jenis_pinang = jenis_pinang or pred_result["jenis_pinang"]
+                kualitas_pinang = kualitas_pinang or pred_result["kualitas_pinang"]
+                tingkat_kekeringan = tingkat_kekeringan or pred_result["tingkat_kekeringan"]
+                deskripsi = deskripsi or pred_result["deskripsi"]
+                persentase = persentase or pred_result["persentase"]
 
         # 2. Validasi field wajib (kalau ML gagal / gambar gak ada, dan input kosong)
         if not jenis_pinang or not kualitas_pinang or not tingkat_kekeringan:
