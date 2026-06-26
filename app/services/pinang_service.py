@@ -7,28 +7,7 @@ from app.schemas.pinang_schema import PinangCreate, ScanResponse
 from app.schemas.history_schema import HistoryCreate
 from app.services.image_service import save_image
 from app.ml.predict_service import predict_pinang
-from app.ml.clip_filter import CLIPFilter
 from typing import Optional
-
-def _create_clip_filter() -> CLIPFilter:
-    """Create a lightweight CLIPFilter instance (model is loaded on-demand in is_valid)."""
-    return CLIPFilter(
-        positive_prompts=[
-            "a photo of areca nut",
-            "a photo of betel nut",
-            "a close-up photo of pinang fruit",
-            "a photo of areca palm fruit",
-        ],
-        negative_prompts=[
-            "a photo of something else",
-            "a photo of a person",
-            "a photo of an animal",
-            "a photo of a landscape",
-            "a photo of food that is not areca nut",
-        ],
-        threshold=0.55
-    )
-
 
 
 class PinangService:
@@ -50,30 +29,17 @@ class PinangService:
         perangkat: Optional[str] = None,
         catatan: Optional[str] = None
     ) -> ScanResponse:
-        # 1. Jika ada gambar, lakukan validasi CLIP terlebih dahulu
+        # 1. Jika ada gambar, langsung lakukan prediksi ML (tanpa validasi CLIP)
         if file:
             file_bytes = await file.read()
             # Reset cursor ke awal agar bisa disimpan lagi di save_image
             await file.seek(0)
-            
-            # Jalankan filter CLIP
-            is_valid, confidence, message = _create_clip_filter().is_valid(file_bytes)
-            if not is_valid:
-                raise HTTPException(
-                    status_code=422,
-                    detail={
-                        "error": "Gambar tidak valid",
-                        "message": message,
-                        "clip_score": round(confidence, 4),
-                        "hint": "Pastikan gambar menampilkan biji pinang dengan jelas"
-                    }
-                )
-            
+
             # Jika user tidak mengirim input manual, lakukan prediksi ML
             if not jenis_pinang or not kualitas_pinang:
                 # Prediksi menggunakan TFLite
                 pred_result = await predict_pinang(file_bytes)
-                
+
                 # Gunakan hasil ML untuk field yang kosong
                 jenis_pinang = jenis_pinang or pred_result["jenis_pinang"]
                 kualitas_pinang = kualitas_pinang or pred_result["kualitas_pinang"]
@@ -116,7 +82,7 @@ class PinangService:
             # Grade tidak ditemukan di master data — catat tapi tidak error fatal
             harga_tidak_ditemukan = True
 
-        # 4. Simpan transaksi ke tabel History (audit trail)
+        # 6. Simpan transaksi ke tabel History (audit trail)
         history_data = HistoryCreate(
             user_id=user_id,
             pinang_id=pinang.id,
@@ -129,7 +95,7 @@ class PinangService:
         )
         history = await self.history_repo.create_history(history_data)
 
-        # 5. Return combined response ke user
+        # 7. Return combined response ke user
         return ScanResponse(
             pinang_id=pinang.id,
             grade=grade,

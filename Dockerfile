@@ -2,19 +2,15 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies (git tidak perlu lagi karena CLIP dihapus)
 RUN apt-get update && apt-get install -y \
     libgl1 \
     libglib2.0-0 \
-    git \
     && rm -rf /var/lib/apt/lists/*
 
 # Install python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-
-# Pre-download and cache OpenAI CLIP model during Docker build
-RUN python -c "import clip; clip.load('ViT-B/32')"
 
 # Copy backend source files
 COPY . .
