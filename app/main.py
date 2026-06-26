@@ -72,7 +72,12 @@ app.include_router(pinang_route.router, prefix="/api")
 app.include_router(harga_route.router, prefix="/api")
 app.include_router(history_route.router, prefix="/api")
 
-app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
+# Pastikan direktori static/image ada sebelum di-mount (mencegah error di server baru)
+static_dir = BASE_DIR / "static"
+static_dir.mkdir(parents=True, exist_ok=True)
+(static_dir / "image").mkdir(parents=True, exist_ok=True)
+
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 
 @app.get("/")
