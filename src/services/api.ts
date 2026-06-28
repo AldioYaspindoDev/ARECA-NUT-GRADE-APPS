@@ -1,6 +1,8 @@
 import axios from "axios";
-import { API_URL } from "@env";
+import { API_URL as ENV_API_URL } from "@env";
 import { getToken } from "./storage";
+
+const API_URL = ENV_API_URL || "https://areca-nut-grade-apps.onrender.com";
 
 const api = axios.create({
   baseURL: API_URL,

@@ -18,7 +18,10 @@ import BottomNavigationBar from "../../components/BottomNavigationBar";
 import * as ImagePicker from "expo-image-picker";
 import { getArticles, Article } from "@/services/articleService";
 import { getScanHistory, scanPinang, HistoryItem, getPrices, HargaItem } from "@/services/pinangService";
-import { API_URL } from "@env";
+import { API_URL as ENV_API_URL } from "@env";
+import { Feather } from "@expo/vector-icons";
+
+const API_URL = ENV_API_URL || "https://areca-nut-grade-apps.onrender.com";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CAROUSEL_PADDING = 16;
@@ -80,8 +83,12 @@ export default function HomeArecaNut({ navigation, route }: any) {
 
     try {
       setLoadingHistory(true);
-      const historyData = await getScanHistory(0, 3);
+      const [historyData, priceData] = await Promise.all([
+        getScanHistory(0, 3),
+        getPrices().catch(() => [])
+      ]);
       setHistory(historyData);
+      if (priceData.length > 0) setPrices(priceData);
     } catch (error) {
       console.error("Gagal memuat riwayat:", error);
     } finally {
@@ -205,11 +212,7 @@ export default function HomeArecaNut({ navigation, route }: any) {
             {/* Upload */}
             <View style={styles.menuItem}>
               <TouchableOpacity style={styles.menuIconButton} onPress={() => handlePickImage(false)}>
-                <Image
-                  source={{ uri: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/VPTfRFh18j/29pn09sv_expires_30_days.png" }}
-                  resizeMode="stretch"
-                  style={styles.menuIconImg}
-                />
+                <Feather name="image" size={24} color="#572B18" />
               </TouchableOpacity>
               <Text style={styles.menuLabel}>Upload</Text>
             </View>
@@ -217,11 +220,7 @@ export default function HomeArecaNut({ navigation, route }: any) {
             {/* Kamera */}
             <View style={styles.menuItem}>
               <TouchableOpacity style={styles.menuIconButton} onPress={() => handlePickImage(true)}>
-                <Image
-                  source={{ uri: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/VPTfRFh18j/awbb2u5k_expires_30_days.png" }}
-                  resizeMode="stretch"
-                  style={styles.menuIconImg}
-                />
+                <Feather name="camera" size={24} color="#572B18" />
               </TouchableOpacity>
               <Text style={styles.menuLabel}>Kamera</Text>
             </View>
@@ -229,11 +228,7 @@ export default function HomeArecaNut({ navigation, route }: any) {
             {/* Riwayat */}
             <View style={styles.menuItem}>
               <TouchableOpacity style={styles.menuIconButton} onPress={() => navigation.navigate("HistoryScan")}>
-                <Image
-                  source={{ uri: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/VPTfRFh18j/tkmr3j74_expires_30_days.png" }}
-                  resizeMode="stretch"
-                  style={styles.menuIconImg}
-                />
+                <Feather name="clock" size={24} color="#572B18" />
               </TouchableOpacity>
               <Text style={styles.menuLabel}>Riwayat</Text>
             </View>
@@ -241,11 +236,7 @@ export default function HomeArecaNut({ navigation, route }: any) {
             {/* Harga */}
             <View style={styles.menuItem}>
               <TouchableOpacity style={styles.menuIconButton} onPress={handleOpenPrices}>
-                <Image
-                  source={{ uri: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/VPTfRFh18j/b4heou8h_expires_30_days.png" }}
-                  resizeMode="stretch"
-                  style={styles.menuIconImg}
-                />
+                <Feather name="tag" size={24} color="#572B18" />
               </TouchableOpacity>
               <Text style={styles.menuLabel}>Harga</Text>
             </View>
@@ -291,14 +282,10 @@ export default function HomeArecaNut({ navigation, route }: any) {
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionTitle}>Riwayat Terbaru</Text>
             <View style={styles.nextContainer}>
-              <TouchableOpacity onPress={() => navigation.navigate("HistoryScan")}>
+              <TouchableOpacity onPress={() => navigation.navigate("HistoryScan")} style={{ flexDirection: "row", alignItems: "center" }}>
                 <Text style={styles.nextText}>Selanjutnya</Text>
+                <Feather name="chevron-right" size={16} color="#484745" />
               </TouchableOpacity>
-              <Image
-                source={{ uri: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/VPTfRFh18j/2phx3wtp_expires_30_days.png" }}
-                resizeMode="stretch"
-                style={styles.nextIcon}
-              />
             </View>
           </View>
 
@@ -310,6 +297,14 @@ export default function HomeArecaNut({ navigation, route }: any) {
             ) : (
               history.map((item, index) => {
                 const imageUrl = getFullImageUrl(item.pinang?.gambar);
+                const matchingPrice = prices.find(
+                  (p) =>
+                    p.grade.toLowerCase().trim() === item.grade?.toLowerCase().trim() ||
+                    p.grade.toLowerCase().trim() === `grade ${item.grade?.toLowerCase().trim()}` ||
+                    item.grade?.toLowerCase().trim() === `grade ${p.grade.toLowerCase().trim()}`
+                );
+                const finalPrice = matchingPrice?.harga || item.harga_per_kg;
+
                 return (
                   <TouchableOpacity
                     key={item.id}
@@ -323,7 +318,7 @@ export default function HomeArecaNut({ navigation, route }: any) {
                           deskripsi: item.pinang?.deskripsi,
                           persentase: item.pinang?.persentase,
                           gambar: item.pinang?.gambar,
-                          harga_per_kg: item.harga_per_kg,
+                          harga_per_kg: finalPrice,
                           keterangan_harga: item.keterangan_harga,
                           history_id: item.id,
                           created_at: item.created_at,
@@ -351,7 +346,9 @@ export default function HomeArecaNut({ navigation, route }: any) {
                           })}
                         </Text>
                         <Text style={styles.historyPriceText}>
-                          Rp {parseInt(item.harga_per_kg).toLocaleString("id-ID")}/kg
+                          {finalPrice && !isNaN(parseInt(finalPrice)) 
+                            ? `Rp ${parseInt(finalPrice).toLocaleString("id-ID")}/kg` 
+                            : (finalPrice || "Hubungi Admin")}
                         </Text>
                       </View>
                     </View>
@@ -441,7 +438,9 @@ export default function HomeArecaNut({ navigation, route }: any) {
                         <Text style={styles.priceGradeText}>Grade {item.grade}</Text>
                       </View>
                       <Text style={styles.priceValText}>
-                        Rp {parseInt(item.harga).toLocaleString("id-ID")}/kg
+                        {item.harga && !isNaN(parseInt(item.harga))
+                          ? `Rp ${parseInt(item.harga).toLocaleString("id-ID")}/kg`
+                          : (item.harga || "-")}
                       </Text>
                     </View>
                     {item.keterangan ? <Text style={styles.priceDescText}>{item.keterangan}</Text> : null}

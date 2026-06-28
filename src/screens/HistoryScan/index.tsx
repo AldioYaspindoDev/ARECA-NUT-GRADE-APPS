@@ -12,14 +12,17 @@ import {
   Share,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { getScanHistory, HistoryItem, deleteScanHistory } from "@/services/pinangService";
-import { API_URL } from "@env";
+import { getScanHistory, HistoryItem, deleteScanHistory, getPrices, HargaItem } from "@/services/pinangService";
+import { API_URL as ENV_API_URL } from "@env";
 import { Feather } from "@expo/vector-icons";
+
+const API_URL = ENV_API_URL || "https://areca-nut-grade-apps.onrender.com";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 export default function HistoryScan({ navigation }: any) {
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [prices, setPrices] = useState<HargaItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   const getFullImageUrl = (path?: string) => {
@@ -36,8 +39,12 @@ export default function HistoryScan({ navigation }: any) {
   const fetchHistory = async () => {
     try {
       setLoading(true);
-      const data = await getScanHistory(0, 100);
+      const [data, priceData] = await Promise.all([
+        getScanHistory(0, 100),
+        getPrices().catch(() => [])
+      ]);
       setHistory(data);
+      if (priceData.length > 0) setPrices(priceData);
     } catch (error) {
       console.error("Gagal memuat riwayat lengkap:", error);
     } finally {
@@ -45,15 +52,15 @@ export default function HistoryScan({ navigation }: any) {
     }
   };
 
-  const handleSaveResult = async (item: HistoryItem) => {
+  const handleSaveResult = async (item: HistoryItem, finalPrice: string) => {
     try {
       const formattedDate = new Date(item.created_at).toLocaleString("id-ID", {
         dateStyle: "medium",
         timeStyle: "short",
       });
-      const priceText = item.harga_per_kg
-        ? `Rp ${parseInt(item.harga_per_kg).toLocaleString("id-ID")}/kg`
-        : "Hubungi Admin";
+      const priceText = finalPrice && !isNaN(parseInt(finalPrice))
+        ? `Rp ${parseInt(finalPrice).toLocaleString("id-ID")}/kg`
+        : (finalPrice || "Hubungi Admin");
       const message = `*Hasil Analisis Klasifikasi Pinang - ArecaNut*\n\n` +
         `• Jenis Pinang: ${item.pinang?.jenis_pinang || "Pinang"}\n` +
         `• Kualitas: Grade ${item.grade || "-"}\n` +
@@ -154,6 +161,13 @@ export default function HistoryScan({ navigation }: any) {
           history.map((item, index) => {
             const imageUrl = getFullImageUrl(item.pinang?.gambar);
             const gradeColor = getGradeColor(item.grade);
+            const matchingPrice = prices.find(
+              (p) =>
+                p.grade.toLowerCase().trim() === item.grade?.toLowerCase().trim() ||
+                p.grade.toLowerCase().trim() === `grade ${item.grade?.toLowerCase().trim()}` ||
+                item.grade?.toLowerCase().trim() === `grade ${p.grade.toLowerCase().trim()}`
+            );
+            const finalPrice = matchingPrice?.harga || item.harga_per_kg;
 
             return (
               <View key={item.id} style={styles.card}>
@@ -169,7 +183,7 @@ export default function HistoryScan({ navigation }: any) {
                         deskripsi: item.pinang?.deskripsi,
                         persentase: item.pinang?.persentase,
                         gambar: item.pinang?.gambar,
-                        harga_per_kg: item.harga_per_kg,
+                        harga_per_kg: finalPrice,
                         keterangan_harga: item.keterangan_harga,
                         history_id: item.id,
                         created_at: item.created_at,
@@ -212,7 +226,9 @@ export default function HistoryScan({ navigation }: any) {
 
                     <View style={styles.cardBottomRow}>
                       <Text style={styles.priceText}>
-                        Rp {parseInt(item.harga_per_kg).toLocaleString("id-ID")}/kg
+                        {finalPrice && !isNaN(parseInt(finalPrice)) 
+                          ? `Rp ${parseInt(finalPrice).toLocaleString("id-ID")}/kg` 
+                          : (finalPrice || "Hubungi Admin")}
                       </Text>
                     </View>
                   </View>
@@ -228,7 +244,7 @@ export default function HistoryScan({ navigation }: any) {
                 <View style={styles.cardActions}>
                   <TouchableOpacity
                     style={styles.saveActionButton}
-                    onPress={() => handleSaveResult(item)}
+                    onPress={() => handleSaveResult(item, finalPrice)}
                   >
                     <Feather name="share-2" size={16} color="#572B18" style={{ marginRight: 6 }} />
                     <Text style={styles.saveActionText}>Simpan</Text>

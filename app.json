@@ -4,22 +4,16 @@
     "slug": "ArecaNutMobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./src/assets/Logo3_square.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.aldio.arecanut"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./src/assets/Logo3_square.png",
+        "backgroundColor": "#572B18"
       },
       "package": "com.aldio.arecanut",
       "predictiveBackGestureEnabled": false
@@ -31,7 +25,15 @@
       "expo-status-bar",
       "expo-secure-store",
       "./withGradleWrapper.js",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./src/assets/Logo3.png",
+          "backgroundColor": "#572B18",
+          "resizeMode": "contain"
+        }
+      ]
     ],
     "extra": {
       "eas": {

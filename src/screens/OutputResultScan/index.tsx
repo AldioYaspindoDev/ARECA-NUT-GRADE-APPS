@@ -1,12 +1,40 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { View, ScrollView, Image, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import BottomNavigationBar from "@/components/BottomNavigationBar";
-import { API_URL } from "@env";
+import { API_URL as ENV_API_URL } from "@env";
+import { getPrices } from "@/services/pinangService";
+
+const API_URL = ENV_API_URL || "https://areca-nut-grade-apps.onrender.com";
 
 export default function OutputResultScan({ route, navigation }: any) {
   const scanResult = route?.params?.scanResult;
   const localImageUri = route?.params?.localImageUri;
+
+  const [realPrice, setRealPrice] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchRealPrice = async () => {
+      if (!scanResult?.grade) return;
+      try {
+        const prices = await getPrices();
+        const matchingPrice = prices.find(
+          (p) =>
+            p.grade.toLowerCase().trim() === scanResult.grade.toLowerCase().trim() ||
+            p.grade.toLowerCase().trim() === `grade ${scanResult.grade.toLowerCase().trim()}` ||
+            scanResult.grade.toLowerCase().trim() === `grade ${p.grade.toLowerCase().trim()}`
+        );
+        if (matchingPrice && matchingPrice.harga) {
+          setRealPrice(matchingPrice.harga);
+        }
+      } catch (error) {
+        console.log("Failed to fetch override price", error);
+      }
+    };
+    fetchRealPrice();
+  }, [scanResult?.grade]);
+
+  const finalPrice = realPrice || scanResult?.harga_per_kg;
 
   const getFullImageUrl = (path?: string) => {
     if (!path) return null;
@@ -105,9 +133,9 @@ export default function OutputResultScan({ route, navigation }: any) {
                     </Text>
                   </View>
                   <Text style={styles.detailValueHighlighted}>
-                    {scanResult?.harga_per_kg 
-                      ? "Rp " + parseInt(scanResult.harga_per_kg).toLocaleString("id-ID") + "/kg"
-                      : "Hubungi Admin"}
+                    {finalPrice && !isNaN(parseInt(finalPrice))
+                      ? `Rp ${parseInt(finalPrice).toLocaleString("id-ID")}/kg`
+                      : (finalPrice || "Hubungi Admin")}
                   </Text>
                 </View>
               </View>

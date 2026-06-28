@@ -16,7 +16,8 @@ import * as ImagePicker from "expo-image-picker";
 import BottomNavigationBar from "../../components/BottomNavigationBar";
 import { useAuthStore } from "@/stores/useAuthStore";
 import Login from "../Login";
-import { API_URL } from "@env";
+import { API_URL as ENV_API_URL } from "@env";
+const API_URL = ENV_API_URL || "https://areca-nut-grade-apps.onrender.com";
 import {
   updateUser,
   updatedPhotoProfile,

@@ -10,7 +10,9 @@ import {
   StatusBar,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { API_URL } from "@env";
+import { API_URL as ENV_API_URL } from "@env";
+
+const API_URL = ENV_API_URL || "https://areca-nut-grade-apps.onrender.com";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const COVER_HEIGHT = 280;

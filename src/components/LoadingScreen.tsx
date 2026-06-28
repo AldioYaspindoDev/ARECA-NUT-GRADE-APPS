@@ -1,13 +1,18 @@
 // src/components/LoadingScreen.tsx
 import React from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import { useRestyleTheme } from '../theme';
+import { View, Image, StyleSheet, Dimensions, ActivityIndicator } from 'react-native';
+
+const { width } = Dimensions.get('window');
 
 export const LoadingScreen = () => {
-  const theme = useRestyleTheme();
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <ActivityIndicator size="large" color={theme.colors.primary} />
+    <View style={styles.container}>
+      <Image
+        source={require('../assets/Logo3.png')}
+        style={styles.logo}
+        resizeMode="contain"
+      />
+      <ActivityIndicator size="small" color="#FFFFFF" style={styles.loader} />
     </View>
   );
 };
@@ -17,5 +22,14 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#572B18', // Coklat ArecaNut
   },
+  logo: {
+    width: width * 0.5,
+    height: width * 0.5,
+  },
+  loader: {
+    position: 'absolute',
+    bottom: 50,
+  }
 });
