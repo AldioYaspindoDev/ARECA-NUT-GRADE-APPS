@@ -7,10 +7,8 @@ from app.core.token import create_access_token, decode_token
 from app.core.config import  settings
 from datetime import timedelta
 from typing import Optional
-from app.services.image_service import save_image
+from app.services.image_service import save_image, delete_image_by_url
 from app.models.user_model import UserModels
-from app.core.image import UPLOAD_DIR
-import os
 
 class UserService:
     def __init__(self, db: AsyncSession):
@@ -74,8 +72,12 @@ class UserService:
         if not user:
             raise HTTPException(status_code=404, detail="user not found")
 
-        # 1. Simpan gambar ke file system
-        gambar_path = await save_image(gambar)
+        # Hapus foto profile lama dari Cloudinary jika ada
+        if user.photoProfile:
+            await delete_image_by_url(user.photoProfile)
+
+        # 1. Simpan gambar ke Cloudinary
+        gambar_path = await save_image(gambar, folder="uploads/profiles")
 
         # 2. Update database dengan path gambar baru
         updated_user = await self.user_repo.update_photo_profile(user_id, gambar_path)
@@ -93,8 +95,12 @@ class UserService:
         if not user:
             raise HTTPException(status_code=404, detail="User tidak ditemukan")
 
-        # 1. Simpan gambar ke file system
-        gambar_path = await save_image(gambar)
+        # Hapus foto profile lama dari Cloudinary jika ada
+        if user.photoProfile:
+            await delete_image_by_url(user.photoProfile)
+
+        # 1. Simpan gambar ke Cloudinary
+        gambar_path = await save_image(gambar, folder="uploads/profiles")
 
         # 2. Update database dengan path gambar baru
         updated_user = await self.user_repo.update_photo_profile(user_id, gambar_path)
@@ -135,15 +141,9 @@ class UserService:
         if not user:
             raise HTTPException(status_code=404, detail="User tidak ditemukan")
 
-        # Hapus file fisik jika ada path-nya
+        # Hapus file dari Cloudinary jika ada path-nya
         if user.photoProfile:
-            filename = user.photoProfile.split("/")[-1]
-            file_path = os.path.join(UPLOAD_DIR, filename)
-            if os.path.exists(file_path):
-                try:
-                    os.remove(file_path)
-                except Exception as e:
-                    print(f"Gagal menghapus file fisik: {e}")
+            await delete_image_by_url(user.photoProfile)
 
         updated_user = await self.user_repo.delete_foto_profile(user_id)
         if not updated_user:
@@ -155,15 +155,9 @@ class UserService:
         if not user:
             raise HTTPException(status_code=404, detail="User tidak ditemukan")
 
-        # Hapus file fisik jika ada
+        # Hapus file dari Cloudinary jika ada
         if user.photoProfile:
-            filename = user.photoProfile.split("/")[-1]
-            file_path = os.path.join(UPLOAD_DIR, filename)
-            if os.path.exists(file_path):
-                try:
-                    os.remove(file_path)
-                except Exception as e:
-                    print(f"Gagal menghapus file fisik saat menghapus user: {e}")
+            await delete_image_by_url(user.photoProfile)
 
         success = await self.user_repo.delete_user(user_id)
         if not success:

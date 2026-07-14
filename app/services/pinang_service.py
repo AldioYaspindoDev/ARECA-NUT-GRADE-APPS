@@ -5,7 +5,7 @@ from app.repositories.harga_repositori import HargaRepositori
 from app.repositories.history_repositori import HistoryRepositori
 from app.schemas.pinang_schema import PinangCreate, ScanResponse
 from app.schemas.history_schema import HistoryCreate
-from app.services.image_service import save_image
+from app.services.image_service import save_image, delete_image_by_url
 from app.ml.predict_service import predict_pinang
 from typing import Optional
 
@@ -62,7 +62,7 @@ class PinangService:
         # 3. Simpan gambar fisik jika ada
         gambar = None
         if file:
-            gambar = await save_image(file)
+            gambar = await save_image(file, folder="uploads/pinangs")
 
         # 4. Simpan hasil deteksi ke tabel Pinang
         pinang = await self.pinang_repo.create_pinang_data(pinang_data, user_id, gambar)
@@ -125,16 +125,8 @@ class PinangService:
         if not pinang:
             raise HTTPException(status_code=404, detail="Data pinang tidak ditemukan")
 
-        # Hapus file fisik gambar jika ada
+        # Hapus gambar dari Cloudinary jika ada
         if pinang.gambar:
-            import os
-            from app.core.image import UPLOAD_DIR
-            filename = pinang.gambar.split("/")[-1]
-            file_path = os.path.join(UPLOAD_DIR, filename)
-            if os.path.exists(file_path):
-                try:
-                    os.remove(file_path)
-                except Exception as e:
-                    print(f"Gagal menghapus file fisik pinang: {e}")
+            await delete_image_by_url(pinang.gambar)
 
         return await self.pinang_repo.delete_pinang(pinang_id)

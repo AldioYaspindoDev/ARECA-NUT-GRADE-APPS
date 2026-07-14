@@ -2,7 +2,7 @@ from fastapi import HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.repositories.article_repositori import ArticleRepositori
 from app.schemas.article_schema import ArticleCreate, ArticleUpdate
-from app.services.image_service import save_image
+from app.services.image_service import save_image, delete_image_by_url
 from typing import Optional
 
 class ArticleService:
@@ -12,7 +12,7 @@ class ArticleService:
     async def create_article(self, article_data: ArticleCreate, user_id: str, file: Optional[UploadFile] = None):
         gambar = None
         if file:
-            gambar = await save_image(file)
+            gambar = await save_image(file, folder="uploads/articles")
         return await self.article_repo.create_article(article_data, user_id, gambar)
 
     async def get_article_by_id(self, article_id: str):
@@ -38,4 +38,9 @@ class ArticleService:
             raise HTTPException(status_code=404, detail="Artikel tidak ditemukan")
         if not is_admin and article.user_id != current_user_id:
             raise HTTPException(status_code=403, detail="Tidak diizinkan untuk menghapus data ini")
+        
+        # Hapus gambar dari Cloudinary jika ada
+        if article.gambar:
+            await delete_image_by_url(article.gambar)
+            
         return await self.article_repo.delete_article(article_id)

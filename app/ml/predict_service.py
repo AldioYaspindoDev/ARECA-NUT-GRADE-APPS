@@ -6,70 +6,60 @@ from io import BytesIO
 from typing import Optional
 
 # Path ke model TFLite
-MODEL_PATH = str(Path(__file__).resolve().parent / "model_jenis_pinang.tflite")
+MODEL_JENIS_PATH = str(Path(__file__).resolve().parent / "model_jenis_pinang.tflite")
+MODEL_KEKERINGAN_PATH = str(Path(__file__).resolve().parent / "model_kekeringan_pinang.tflite")
 
-# Label mapping: index model -> jenis pinang
-LABELS = {
-    0: {
-        "jenis_pinang": "Bette",
-        "kualitas_pinang": "A",
-        "tingkat_kekeringan": "Kering Sempurna",
-        "deskripsi": "Kualitas Bagus — Bulat Bersih"
-    },
-    1: {
-        "jenis_pinang": "Gotu",
-        "kualitas_pinang": "B",
-        "tingkat_kekeringan": "Setengah Kering",
-        "deskripsi": "Kualitas Kurang Bagus — Masih berserabut atau pecah"
-    },
-    2: {
-        "jenis_pinang": "Kole",
-        "kualitas_pinang": "C",
-        "tingkat_kekeringan": "Belum Kering",
-        "deskripsi": "Kualitas Buruk — Sebagian sudah busuk dan bentuk tidak bulat utuh"
-    }
-}
+# Labels
+CLASS_JENIS = ["Bete", "Gotu", "Kole"]
+CLASS_KEKERINGAN = ["BASAH", "KERING"]
 
-# Singleton: interpreter hanya di-load sekali
-_interpreter = None
+# Singletons: interpreter hanya di-load sekali
+_interpreter_jenis = None
+_interpreter_kering = None
 
 
-def _get_interpreter():
-    """Load TFLite interpreter sekali (singleton pattern)."""
-    global _interpreter
-    if _interpreter is None:
+def _get_interpreter_jenis():
+    """Load TFLite interpreter jenis sekali (singleton pattern)."""
+    global _interpreter_jenis
+    if _interpreter_jenis is None:
         try:
-            # Coba gunakan LiteRT (ai-edge-litert) terlebih dahulu (paling ringan & support python 3.12)
             from ai_edge_litert.interpreter import Interpreter
         except ImportError:
             try:
-                # Coba gunakan tflite-runtime
                 from tflite_runtime.interpreter import Interpreter
             except ImportError:
-                # Fallback ke tensorflow
                 from tensorflow.lite.python.interpreter import Interpreter
 
-        if not os.path.exists(MODEL_PATH):
-            raise FileNotFoundError(f"Model TFLite tidak ditemukan di: {MODEL_PATH}")
+        if not os.path.exists(MODEL_JENIS_PATH):
+            raise FileNotFoundError(f"Model TFLite jenis tidak ditemukan di: {MODEL_JENIS_PATH}")
 
-        _interpreter = Interpreter(model_path=MODEL_PATH)
-        _interpreter.allocate_tensors()
-        print(f"✅ Model TFLite berhasil dimuat dari: {MODEL_PATH}")
+        _interpreter_jenis = Interpreter(model_path=MODEL_JENIS_PATH)
+        _interpreter_jenis.allocate_tensors()
+        print(f"✅ Model TFLite Jenis berhasil dimuat dari: {MODEL_JENIS_PATH}")
 
-    return _interpreter
+    return _interpreter_jenis
 
 
-def get_model_info() -> dict:
-    """Menampilkan informasi input/output model TFLite."""
-    interpreter = _get_interpreter()
-    input_details = interpreter.get_input_details()
-    output_details = interpreter.get_output_details()
-    return {
-        "input_shape": input_details[0]["shape"].tolist(),
-        "input_dtype": str(input_details[0]["dtype"]),
-        "output_shape": output_details[0]["shape"].tolist(),
-        "output_dtype": str(output_details[0]["dtype"]),
-    }
+def _get_interpreter_kering():
+    """Load TFLite interpreter kekeringan sekali (singleton pattern)."""
+    global _interpreter_kering
+    if _interpreter_kering is None:
+        try:
+            from ai_edge_litert.interpreter import Interpreter
+        except ImportError:
+            try:
+                from tflite_runtime.interpreter import Interpreter
+            except ImportError:
+                from tensorflow.lite.python.interpreter import Interpreter
+
+        if not os.path.exists(MODEL_KEKERINGAN_PATH):
+            raise FileNotFoundError(f"Model TFLite kekeringan tidak ditemukan di: {MODEL_KEKERINGAN_PATH}")
+
+        _interpreter_kering = Interpreter(model_path=MODEL_KEKERINGAN_PATH)
+        _interpreter_kering.allocate_tensors()
+        print(f"✅ Model TFLite Kekeringan berhasil dimuat dari: {MODEL_KEKERINGAN_PATH}")
+
+    return _interpreter_kering
 
 
 def preprocess_image(image_bytes: bytes, target_size: tuple) -> np.ndarray:
@@ -86,72 +76,172 @@ def preprocess_image(image_bytes: bytes, target_size: tuple) -> np.ndarray:
     return img_array
 
 
+def tentukan_grade(jenis: str, kekeringan: str) -> dict:
+    """
+    Menggabungkan output Model 1 dan Model 2 untuk menentukan
+    grade akhir dan kisaran harga biji pinang.
+    """
+    aturan = {
+        ("Bette", "Kering"): {
+            "grade": "Grade A",
+            "harga_min": 12000,
+            "harga_max": 15000,
+            "status": "layak",
+            "keterangan": "Kualitas premium, memenuhi standar ekspor"
+        },
+        ("Bette", "Basah"): {
+            "grade": "Grade C",
+            "harga_min": 4000,
+            "harga_max": 6000,
+            "status": "layak",
+            "keterangan": "Bentuk baik namun kadar air terlalu tinggi"
+        },
+        ("Gotu", "Kering"): {
+            "grade": "Grade B",
+            "harga_min": 7000,
+            "harga_max": 10000,
+            "status": "layak",
+            "keterangan": "Kualitas menengah dengan kadar air optimal"
+        },
+        ("Gotu", "Basah"): {
+            "grade": "Grade D",
+            "harga_min": 1500,
+            "harga_max": 3000,
+            "status": "layak",
+            "keterangan": "Kualitas campuran dengan kadar air tinggi"
+        },
+        ("Kole", "Kering"): {
+            "grade": "Grade D",
+            "harga_min": 1000,
+            "harga_max": 2500,
+            "status": "layak",
+            "keterangan": "Kerusakan fisik permanen meskipun sudah kering"
+        },
+        ("Kole", "Basah"): {
+            "grade": "Ditolak",
+            "harga_min": 0,
+            "harga_max": 0,
+            "status": "ditolak",
+            "keterangan": "Busuk dan basah, tidak memenuhi standar minimum"
+        },
+    }
+
+    # Normalisasi jenis "Bete" -> "Bette"
+    jenis_norm = "Bette" if jenis.lower() in ["bete", "bette"] else jenis.capitalize()
+    kekeringan_norm = kekeringan.capitalize()
+
+    key = (jenis_norm, kekeringan_norm)
+    return aturan.get(key, {
+        "grade": "Tidak Dikenal",
+        "harga_min": 0,
+        "harga_max": 0,
+        "status": "error",
+        "keterangan": f"Kombinasi tidak valid: jenis={jenis}, kekeringan={kekeringan}"
+    })
+
+
 async def predict_pinang(image_bytes: bytes) -> dict:
     """
-    Menjalankan inferensi model TFLite pada gambar pinang.
+    Menjalankan inferensi model gabungan (Jenis & Kekeringan) pada gambar pinang.
 
     Args:
         image_bytes: Bytes dari file gambar yang diupload.
 
     Returns:
-        dict berisi:
-        - jenis_pinang: str (Bette / Gotu / Kole)
-        - kualitas_pinang: str (A / B / C)
-        - tingkat_kekeringan: str
-        - deskripsi: str
-        - persentase: str (confidence dalam persen, misal "92.5%")
-        - all_predictions: list[dict] (semua prediksi dengan confidence)
+        dict berisi hasil prediksi terformat sesuai prompt_sistem_klasifikasi_pinang.md
     """
-    interpreter = _get_interpreter()
+    # 1. Prediksi Jenis Pinang
+    interp_j = _get_interpreter_jenis()
+    in_details_j = interp_j.get_input_details()
+    out_details_j = interp_j.get_output_details()
+    
+    input_shape_j = in_details_j[0]["shape"]
+    target_size_j = (input_shape_j[1], input_shape_j[2])
+    input_data_j = preprocess_image(image_bytes, target_size_j)
 
-    # Ambil detail input/output
-    input_details = interpreter.get_input_details()
-    output_details = interpreter.get_output_details()
+    interp_j.set_tensor(in_details_j[0]["index"], input_data_j)
+    interp_j.invoke()
+    output_j = interp_j.get_tensor(out_details_j[0]["index"])[0]
+    
+    idx_j = int(np.argmax(output_j))
+    conf_j = float(output_j[idx_j])
+    jenis_pinang = CLASS_JENIS[idx_j]
 
-    # Ambil target size dari input model (misal: [1, 224, 224, 3])
-    input_shape = input_details[0]["shape"]
-    target_size = (input_shape[1], input_shape[2])  # (height, width)
-
-    # Preprocess gambar
-    input_data = preprocess_image(image_bytes, target_size)
-
-    # Set input tensor & jalankan inferensi
-    interpreter.set_tensor(input_details[0]["index"], input_data)
-    interpreter.invoke()
-
-    # Ambil output
-    output_data = interpreter.get_tensor(output_details[0]["index"])
-    probabilities = output_data[0]  # Array probabilitas untuk setiap kelas
-
-    # Ambil index dengan probabilitas tertinggi
-    predicted_index = int(np.argmax(probabilities))
-    confidence = float(probabilities[predicted_index])
-
-    if confidence < 0.70:
+    # Validasi Threshold Minimum Keyakinan Jenis
+    if conf_j < 0.70:
         from fastapi import HTTPException
         raise HTTPException(
             status_code=400,
-            detail=f"Gambar tidak dapat dikenali sebagai jenis pinang yang valid dengan keyakinan yang cukup (Keyakinan: {confidence * 100:.1f}%). Pastikan posisi pinang terfokus dan pencahayaan cukup."
+            detail=f"Gambar tidak dapat dikenali sebagai jenis pinang yang valid (Keyakinan jenis: {conf_j * 100:.1f}%). Pastikan fokus dan pencahayaan gambar cukup baik."
         )
 
-    # Mapping ke label
-    label_info = LABELS.get(predicted_index, LABELS[0])
+    # 2. Prediksi Kekeringan Pinang
+    interp_k = _get_interpreter_kering()
+    in_details_k = interp_k.get_input_details()
+    out_details_k = interp_k.get_output_details()
+    
+    input_shape_k = in_details_k[0]["shape"]
+    target_size_k = (input_shape_k[1], input_shape_k[2])
+    input_data_k = preprocess_image(image_bytes, target_size_k)
 
-    # Buat daftar semua prediksi (untuk debugging/transparency)
-    all_predictions = []
-    for idx, prob in enumerate(probabilities):
-        info = LABELS.get(idx, {})
-        all_predictions.append({
-            "jenis_pinang": info.get("jenis_pinang", f"Unknown-{idx}"),
-            "kualitas_pinang": info.get("kualitas_pinang", "?"),
-            "confidence": f"{float(prob) * 100:.1f}%"
-        })
+    interp_k.set_tensor(in_details_k[0]["index"], input_data_k)
+    interp_k.invoke()
+    output_k = interp_k.get_tensor(out_details_k[0]["index"])
+    
+    # Sigmoid Output: probability of KERING
+    prob_kering = float(output_k[0][0])
+    prob_basah = 1.0 - prob_kering
+    probs_k = np.array([prob_basah, prob_kering])
+    
+    idx_k = int(np.argmax(probs_k))
+    conf_k = float(probs_k[idx_k])
+    # Label dari model 2 adalah 'BASAH' / 'KERING' (lowercase/uppercase normalization)
+    tingkat_kekeringan = CLASS_KEKERINGAN[idx_k].capitalize()  # "Kering" / "Basah"
+
+    # 3. Hitung Grade & Deskripsi
+    hasil_aturan = tentukan_grade(jenis_pinang, tingkat_kekeringan)
+    grade = hasil_aturan["grade"]  # "Grade A", "Grade B", etc., or "Ditolak"
+    
+    # Map ke DB-friendly code (String(5))
+    grade_db_map = {
+        "Grade A": "A",
+        "Grade B": "B",
+        "Grade C": "C",
+        "Grade D": "D",
+        "Ditolak": "TOLAK"
+    }
+    kualitas_db = grade_db_map.get(grade, "TOLAK")
+
+    # Bobot Gabungan: Model 1 (40%) & Model 2 (60%)
+    conf_gabungan = (conf_j * 0.4) + (conf_k * 0.6)
+
+    # Peringatan keyakinan rendah
+    peringatan = []
+    if conf_j < 0.70:
+        peringatan.append("Keyakinan jenis pinang rendah, ulangi foto")
+    if conf_k < 0.70:
+        peringatan.append("Keyakinan tingkat kekeringan rendah, ulangi foto")
+    if conf_gabungan < 0.65:
+        peringatan.append("Keyakinan sistem rendah, rekomendasikan agar hasil dikonfirmasi secara manual oleh petani/pengepul")
 
     return {
-        "jenis_pinang": label_info["jenis_pinang"],
-        "kualitas_pinang": label_info["kualitas_pinang"],
-        "tingkat_kekeringan": label_info["tingkat_kekeringan"],
-        "deskripsi": label_info["deskripsi"],
-        "persentase": f"{confidence * 100:.1f}%",
-        "all_predictions": all_predictions
+        "jenis_pinang": "Bette" if jenis_pinang.lower() in ["bete", "bette"] else jenis_pinang.capitalize(),
+        "kualitas_pinang": kualitas_db,
+        "tingkat_kekeringan": tingkat_kekeringan,
+        "deskripsi": hasil_aturan["keterangan"],
+        "persentase": f"{conf_gabungan * 100:.1f}%",
+        "peringatan": peringatan,
+        "all_predictions": [
+            {
+                "prediksi": "jenis",
+                "bete_prob": f"{float(output_j[0]) * 100:.1f}%",
+                "gotu_prob": f"{float(output_j[1]) * 100:.1f}%",
+                "kole_prob": f"{float(output_j[2]) * 100:.1f}%"
+            },
+            {
+                "prediksi": "kekeringan",
+                "basah_prob": f"{prob_basah * 100:.1f}%",
+                "kering_prob": f"{prob_kering * 100:.1f}%"
+            }
+        ]
     }

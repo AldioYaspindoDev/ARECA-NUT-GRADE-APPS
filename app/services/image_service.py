@@ -1,13 +1,12 @@
 import os
-import uuid
-import aiofiles
 from fastapi import UploadFile, HTTPException
 from PIL import Image
 from io import BytesIO
-from app.core.image import UPLOAD_DIR, ALLOWED_EXTENSIONS, MAX_FILE_SIZE
+from app.core.image import ALLOWED_EXTENSIONS, MAX_FILE_SIZE
+from app.services import cloudinary_service
 
-async def save_image(file: UploadFile) -> str:
-    """Menyimpan file gambar secara async dengan validasi ekstensi, ukuran, dan integritas gambar."""
+async def save_image(file: UploadFile, folder: str = "uploads/misc") -> str:
+    """Menyimpan file gambar ke Cloudinary dengan validasi ekstensi, ukuran, dan integritas gambar."""
     # 1. Validasi ekstensi
     file_extension = os.path.splitext(file.filename)[1].lower()
     if file_extension not in ALLOWED_EXTENSIONS:
@@ -32,13 +31,23 @@ async def save_image(file: UploadFile) -> str:
     except Exception:
         raise HTTPException(status_code=400, detail="File gambar rusak atau tidak valid")
     
-    # 5. Generate nama gambar unik
-    unique_filename = f"{uuid.uuid4().hex}{file_extension}"
-    file_path = os.path.join(UPLOAD_DIR, unique_filename)
+    # Reset cursor/read bytes to upload
+    # Upload to Cloudinary
+    try:
+        result = cloudinary_service.upload_image(content, folder=folder)
+        return result["url"]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gagal mengunggah gambar ke Cloudinary: {str(e)}")
 
-    # 6. Menyimpan file secara async
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
-    async with aiofiles.open(file_path, "wb") as buffer:
-        await buffer.write(content)
-
-    return f"/static/image/{unique_filename}"
+async def delete_image_by_url(url: str) -> bool:
+    """Menghapus gambar dari Cloudinary berdasarkan URL-nya."""
+    if not url:
+        return False
+    public_id = cloudinary_service.extract_public_id(url)
+    if public_id:
+        try:
+            cloudinary_service.delete_image(public_id)
+            return True
+        except Exception as e:
+            print(f"Gagal menghapus gambar dari Cloudinary: {e}")
+    return False
